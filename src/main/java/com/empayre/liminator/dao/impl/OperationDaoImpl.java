@@ -37,6 +37,14 @@ public class OperationDaoImpl extends AbstractDao implements OperationDao {
     }
 
     @Override
+    public Operation get(Long id) {
+        return getDslContext()
+                .selectFrom(OPERATION)
+                .where(OPERATION.ID.eq(id))
+                .fetchOneInto(Operation.class);
+    }
+
+    @Override
     public void saveBatch(List<Operation> operations) {
         List<OperationRecord> records = operations.stream()
                 .map(operation -> getDslContext().newRecord(OPERATION, operation))

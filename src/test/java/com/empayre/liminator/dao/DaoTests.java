@@ -6,6 +6,7 @@ import com.empayre.liminator.domain.tables.pojos.LimitContext;
 import com.empayre.liminator.domain.tables.pojos.LimitData;
 import com.empayre.liminator.domain.tables.pojos.Operation;
 import com.empayre.liminator.model.LimitValue;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -16,6 +17,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@Slf4j
 @PostgresqlSpringBootITest
 public class DaoTests {
 
@@ -57,7 +59,7 @@ public class DaoTests {
         List<Long> limitIdsList = new ArrayList<>();
         List<String> limitNamesList = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
-            String limitName = "Limit-" + i;
+            String limitName = "Limit-odc-1-" + i;
             Long limitId = limitDataDao.save(new LimitData(null, limitName, LocalDate.now(), LocalDateTime.now()));
             limitIdsList.add(limitId);
             limitNamesList.add(limitName);
@@ -65,7 +67,7 @@ public class DaoTests {
         List<Operation> operations = new ArrayList<>();
         for (Long limitId : limitIdsList) {
             for (int i = 0; i < 5; i++) {
-                operations.add(createOperation(limitId, "Operation-%s-%s".formatted(limitId, i)));
+                operations.add(createOperation(limitId, "Operation-odc-1-%s-%s".formatted(limitId, i)));
             }
         }
         operationDao.saveBatch(operations);
@@ -103,26 +105,26 @@ public class DaoTests {
 
     @Test
     public void operationDaoCurrentLimitWithOperationIdTest() {
-        String limitName = "Limit-1";
+        String limitName = "Limit-odc-2";
         Long limitId = limitDataDao.save(new LimitData(null, limitName, LocalDate.now(), LocalDateTime.now()));
         List<Operation> operations = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
-            operations.add(
-                    createOperation(
-                            limitId,
-                            "Operation-%s-%s".formatted(limitId, i),
-                            LocalDateTime.now().minusMinutes(11L - i))
-            );
+            Operation operation = createOperation(
+                    limitId,
+                    "Operation-odc-2-%s-%s".formatted(limitId, i),
+                    LocalDateTime.now().minusMinutes(11L - i));
+            operationDao.save(operation);
+            operations.add(operation);
         }
-        operationDao.saveBatch(operations);
 
-        List<LimitValue> currentLimitValue =
+        List<LimitValue> valuesForFifthOperation =
                 operationDao.getCurrentLimitValue(List.of(limitName), operations.get(2).getOperationId());
-        assertEquals(300, currentLimitValue.get(0).getHoldValue());
+        LimitValue limitValue = valuesForFifthOperation.get(0);
+        assertEquals(300, limitValue.getHoldValue());
 
-        currentLimitValue =
+        valuesForFifthOperation =
                 operationDao.getCurrentLimitValue(List.of(limitName), operations.get(5).getOperationId());
-        assertEquals(600, currentLimitValue.get(0).getHoldValue());
+        assertEquals(600, valuesForFifthOperation.get(0).getHoldValue());
     }
 
     private Operation createOperation(Long limitId, String operationId) {

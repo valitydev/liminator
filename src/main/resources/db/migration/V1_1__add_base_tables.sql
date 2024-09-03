@@ -10,7 +10,7 @@ CREATE TABLE lim.limit_data
     CONSTRAINT limit_data_pkey PRIMARY KEY (id)
 );
 
-CREATE INDEX limit_data_idx ON lim.limit_data USING btree (name, created_at);
+CREATE UNIQUE INDEX limit_data_unq_idx ON lim.limit_data USING btree (name);
 
 
 
@@ -23,7 +23,7 @@ CREATE TABLE lim.limit_context
     CONSTRAINT limit_context_pkey PRIMARY KEY (id)
 );
 
-CREATE INDEX limit_context_idx ON lim.limit_context USING btree (limit_id);
+CREATE UNIQUE INDEX limit_context_unq_idx ON lim.limit_context USING btree (limit_id);
 
 
 
@@ -40,4 +40,5 @@ CREATE TABLE lim.operation
     CONSTRAINT operation_pkey PRIMARY KEY (id)
 );
 
+CREATE UNIQUE INDEX operation_unq_idx ON lim.operation USING btree (limit_id, operation_id);
 CREATE INDEX operation_idx ON lim.operation USING btree (limit_id, state, created_at, operation_id);

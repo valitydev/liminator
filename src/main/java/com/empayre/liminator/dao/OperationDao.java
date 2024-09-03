@@ -9,6 +9,8 @@ public interface OperationDao extends CommonDao<Operation> {
 
     void saveBatch(List<Operation> operations);
 
+    Operation get(Long id);
+
     List<LimitValue> getCurrentLimitValue(List<String> limitNames);
 
     List<LimitValue> getCurrentLimitValue(List<String> limitNames, String operationId);

@@ -1,21 +1,17 @@
 package com.empayre.liminator.service;
 
 import com.empayre.liminator.config.PostgresqlSpringBootITest;
-import com.empayre.liminator.dao.impl.LimitDataDaoImpl;
 import dev.vality.liminator.CreateLimitRequest;
-import dev.vality.liminator.DuplicateLimitName;
 import dev.vality.liminator.LimitRequest;
 import dev.vality.liminator.LimitResponse;
 import org.apache.thrift.TException;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
 
-import static com.empayre.liminator.domain.tables.LimitData.LIMIT_DATA;
-import static com.empayre.liminator.domain.tables.Operation.OPERATION;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @PostgresqlSpringBootITest
 public class LiminatorServiceTest {
@@ -23,18 +19,9 @@ public class LiminatorServiceTest {
     @Autowired
     private LiminatorService liminatorService;
 
-    @Autowired
-    private LimitDataDaoImpl limitDataDao;
-
-    @BeforeEach
-    void beforeEach() {
-        limitDataDao.getDslContext().truncate(LIMIT_DATA);
-        limitDataDao.getDslContext().truncate(OPERATION);
-    }
-
     @Test
     void createLimitTest() throws TException {
-        String limitName = "TestLimit";
+        String limitName = "TestLimitCreate";
         CreateLimitRequest request = new CreateLimitRequest()
                 .setLimitName(limitName);
 
@@ -46,15 +33,12 @@ public class LiminatorServiceTest {
 
     @Test
     void holdValueTest() throws TException {
-        limitDataDao.getDslContext().truncate(LIMIT_DATA);
-        limitDataDao.getDslContext().truncate(OPERATION);
-
-        String limitName = "TestLimit";
+        String limitName = "TestLimitHold";
         CreateLimitRequest createRequest = new CreateLimitRequest()
                 .setLimitName(limitName);
         liminatorService.create(createRequest);
 
-        String operationId = "Op-112";
+        String operationId = "OpHold";
         LimitRequest holdRequest = new LimitRequest()
                 .setLimitName(limitName)
                 .setOperationId(operationId)
@@ -69,15 +53,12 @@ public class LiminatorServiceTest {
 
     @Test
     void commitValueTest() throws TException {
-        limitDataDao.getDslContext().truncate(LIMIT_DATA);
-        limitDataDao.getDslContext().truncate(OPERATION);
-
-        String limitName = "TestLimit";
+        String limitName = "TestLimitCommit";
         CreateLimitRequest createRequest = new CreateLimitRequest()
                 .setLimitName(limitName);
         liminatorService.create(createRequest);
 
-        String operationId = "Op-112";
+        String operationId = "OpComit";
         LimitRequest holdRequest = new LimitRequest()
                 .setLimitName(limitName)
                 .setOperationId(operationId)
@@ -94,10 +75,7 @@ public class LiminatorServiceTest {
 
     @Test
     void rollbackValueTest() throws TException {
-        limitDataDao.getDslContext().truncate(LIMIT_DATA);
-        limitDataDao.getDslContext().truncate(OPERATION);
-
-        String limitName = "TestLimit";
+        String limitName = "TestLimitRollback";
         CreateLimitRequest createRequest = new CreateLimitRequest()
                 .setLimitName(limitName);
         liminatorService.create(createRequest);

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
@@ -25,6 +26,9 @@ public class LimitDataDaoImpl extends AbstractDao implements LimitDataDao {
         return getDslContext()
                 .insertInto(LIMIT_DATA)
                 .set(getDslContext().newRecord(LIMIT_DATA, limitData))
+                .onConflict(LIMIT_DATA.NAME)
+                .doUpdate()
+                .set(LIMIT_DATA.WTIME, LocalDateTime.now())
                 .returning(LIMIT_DATA.ID)
                 .fetchOne()
                 .getId();
