@@ -1,0 +1,97 @@
+server:
+  port: "${server.port}"
+
+spring:
+  application:
+    name: "${project.name}"
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    driver-class-name: org.postgresql.Driver
+    url: "${db.url}"
+    username: '${db.user}'
+    password: "${db.password}"
+    hikari:
+      idle-timeout: 30000
+      maximum-pool-size: 10
+      data-source-properties:
+        reWriteBatchedInserts: true
+  flyway:
+    schemas: lim
+  jooq:
+    sql-dialect: Postgres
+  kafka:
+    bootstrap-servers: localhost:9092
+    client-id: dominant_warehouse
+    consumer:
+      enable-auto-commit: false
+      auto-offset-reset: earliest
+      max-poll-records: 20
+      properties:
+        max.poll.interval.ms: 30000
+        session.timeout.ms: 30000
+
+service:
+  default:
+    limit: 20
+
+management:
+  server:
+    port: "${management.port}"
+  metrics:
+    export:
+      prometheus:
+        enabled: false
+    tags:
+      application: "${project.name}"
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
+kafka:
+  consumer:
+    group-id: "Liminator-Listener"
+    party-management-concurrency: 7
+    wallet-concurrency: 7
+    identity-concurrency: 7
+  topics:
+    party-management:
+      id: mg-events-party
+      enabled: false
+      consumer.group-id: "LiminatorListenerPartyManagement"
+    identity:
+      id: mg-events-ff-identity
+      enabled: false
+    wallet:
+      id: mg-events-ff-wallet
+      enabled: false
+
+dmt:
+  url: http://dominant:8022/v1/domain/repository
+  networkTimeout: 5000
+  polling:
+    delay: 100
+    maxQuerySize: 10
+    enabled: false
+
+cache:
+  party-shop:
+    size: 10000
+    expire:
+      after:
+        sec: 600
+
+testcontainers:
+  postgresql:
+    tag: '11.4'
+  kafka:
+    tag: '6.2.0'
