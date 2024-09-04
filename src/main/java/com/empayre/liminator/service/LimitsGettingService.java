@@ -16,11 +16,11 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class DataConsistencyCheckingService {
+public class LimitsGettingService {
 
     private final LimitDataDao limitDataDao;
 
-    public List<LimitData> checkLimitsExistance(List<LimitRequest> requestList, String source) throws TException {
+    public List<LimitData> get(List<LimitRequest> requestList, String source) throws TException {
         List<String> limitNames = LimitDataUtils.getLimitNames(requestList);
         List<LimitData> limitData = limitDataDao.get(limitNames);
         if (CollectionUtils.isEmpty(limitData)) {

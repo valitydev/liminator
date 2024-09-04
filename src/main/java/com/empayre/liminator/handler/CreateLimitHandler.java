@@ -7,7 +7,6 @@ import com.empayre.liminator.domain.tables.pojos.LimitData;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.vality.liminator.CreateLimitRequest;
-import dev.vality.liminator.DuplicateLimitName;
 import dev.vality.liminator.LimitResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,10 +14,8 @@ import org.apache.thrift.TException;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.CollectionUtils;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -55,13 +52,17 @@ public class CreateLimitHandler implements Handler<CreateLimitRequest, LimitResp
     private LimitContext convertToLimitContext(Long limitId, Map<String, String> contextMap) {
         LimitContext context = new LimitContext();
         context.setLimitId(limitId);
-        try {
-            context.setContext(mapper.writeValueAsString(contextMap));
-        } catch (JsonProcessingException e) {
-            log.error("[{}] ContextJSON processing exception", LOG_PREFIX, e);
-            context.setContext(EMPTY_JSON);
-        }
+        context.setContext(getContextString(contextMap));
         context.setWtime(LocalDateTime.now());
         return context;
+    }
+
+    private String getContextString(Map<String, String> contextMap) {
+        try {
+            return mapper.writeValueAsString(contextMap);
+        } catch (JsonProcessingException e) {
+            log.error("[{}] ContextJSON processing exception", LOG_PREFIX, e);
+            return EMPTY_JSON;
+        }
     }
 }
