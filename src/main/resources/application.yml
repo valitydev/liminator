@@ -33,6 +33,8 @@ spring:
 service:
   default:
     limit: 20
+  logging:
+    enabled: true
 
 management:
   server:

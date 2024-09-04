@@ -35,10 +35,24 @@ CREATE TABLE lim.operation
     limit_id                        bigint                                                           NOT NULL,
     operation_id                    character varying                                                NOT NULL,
     state                           lim.operation_state                                              NOT NULL,
-    amount                          bigint                                                           NOT NULL,
+    operation_value                 bigint                                                           NOT NULL,
     created_at                      timestamp without time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
     CONSTRAINT operation_pkey PRIMARY KEY (id)
 );
 
 CREATE UNIQUE INDEX operation_unq_idx ON lim.operation USING btree (limit_id, operation_id);
 CREATE INDEX operation_idx ON lim.operation USING btree (limit_id, state, created_at, operation_id);
+
+
+CREATE TABLE lim.operation_state_history
+(
+    id                              bigserial                                                        NOT NULL,
+    operation_id                    character varying                                                NOT NULL,
+    limit_name                      character varying                                                NOT NULL,
+    state                           lim.operation_state                                              NOT NULL,
+    operation_value                 bigint                                                           NOT NULL,
+    created_at                      timestamp without time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+    CONSTRAINT operation_state_history_pkey PRIMARY KEY (id)
+);
+
+CREATE INDEX operation_state_history_unq_idx ON lim.operation USING btree (operation_id);

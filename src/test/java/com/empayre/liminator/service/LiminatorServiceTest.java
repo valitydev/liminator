@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @PostgresqlSpringBootITest
 public class LiminatorServiceTest {
@@ -40,10 +39,10 @@ public class LiminatorServiceTest {
 
         String operationId = "OpHold";
         LimitRequest holdRequest = new LimitRequest()
-                .setLimitName(limitName)
                 .setOperationId(operationId)
+                .setLimitNames(List.of(limitName))
                 .setValue(500L);
-        List<LimitResponse> holdResponse = liminatorService.hold(List.of(holdRequest));
+        List<LimitResponse> holdResponse = liminatorService.hold(holdRequest);
         assertEquals(1, holdResponse.size());
         LimitResponse response = holdResponse.get(0);
         assertEquals(500, response.getHoldValue());
@@ -60,13 +59,13 @@ public class LiminatorServiceTest {
 
         String operationId = "OpComit";
         LimitRequest holdRequest = new LimitRequest()
-                .setLimitName(limitName)
                 .setOperationId(operationId)
+                .setLimitNames(List.of(limitName))
                 .setValue(500L);
-        liminatorService.hold(List.of(holdRequest));
-        assertTrue(liminatorService.commit(List.of(holdRequest)));
+        liminatorService.hold(holdRequest);
+        liminatorService.commit(holdRequest);
 
-        List<LimitResponse> limitResponses = liminatorService.get(List.of(limitName));
+        List<LimitResponse> limitResponses = liminatorService.getLastLimitsValues(List.of(limitName));
         assertEquals(1, limitResponses.size());
         assertEquals(0, limitResponses.get(0).getHoldValue());
         assertEquals(500, limitResponses.get(0).getCommitValue());
@@ -82,13 +81,13 @@ public class LiminatorServiceTest {
 
         String operationId = "Op-112";
         LimitRequest holdRequest = new LimitRequest()
-                .setLimitName(limitName)
                 .setOperationId(operationId)
+                .setLimitNames(List.of(limitName))
                 .setValue(500L);
-        liminatorService.hold(List.of(holdRequest));
-        assertTrue(liminatorService.rollback(List.of(holdRequest)));
+        liminatorService.hold(holdRequest);
+        liminatorService.rollback(holdRequest);
 
-        List<LimitResponse> limitResponses = liminatorService.get(List.of(limitName));
+        List<LimitResponse> limitResponses = liminatorService.getLastLimitsValues(List.of(limitName));
         assertEquals(1, limitResponses.size());
         assertEquals(0, limitResponses.get(0).getHoldValue());
         assertEquals(0, limitResponses.get(0).getCommitValue());

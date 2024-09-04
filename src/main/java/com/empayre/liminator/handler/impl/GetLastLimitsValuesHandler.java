@@ -1,6 +1,7 @@
-package com.empayre.liminator.handler;
+package com.empayre.liminator.handler.impl;
 
 import com.empayre.liminator.dao.OperationDao;
+import com.empayre.liminator.handler.Handler;
 import com.empayre.liminator.model.LimitValue;
 import dev.vality.liminator.LimitResponse;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +16,7 @@ import java.util.List;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class GetLimitAmountHandler implements Handler<List<String>, List<LimitResponse>> {
+public class GetLastLimitsValuesHandler implements Handler<List<String>, List<LimitResponse>> {
 
     private final OperationDao operationDao;
     private final Converter<List<LimitValue>, List<LimitResponse>> currentLimitValuesToLimitResponseConverter;

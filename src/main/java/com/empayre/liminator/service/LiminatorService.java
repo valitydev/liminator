@@ -1,5 +1,6 @@
 package com.empayre.liminator.service;
 
+import com.empayre.liminator.handler.FinalizeOperationHandler;
 import com.empayre.liminator.handler.Handler;
 import dev.vality.liminator.*;
 import lombok.RequiredArgsConstructor;
@@ -15,10 +16,12 @@ import java.util.List;
 public class LiminatorService implements LiminatorServiceSrv.Iface {
 
     private final Handler<CreateLimitRequest, LimitResponse> createLimitHandler;
-    private final Handler<List<LimitRequest>, List<LimitResponse>> holdLimitAmountHandler;
-    private final Handler<List<LimitRequest>, Boolean> commitLimitAmountHandler;
-    private final Handler<List<LimitRequest>, Boolean> rollbackLimitAmountHandler;
-    private final Handler<List<String>, List<LimitResponse>> getLimitAmountHandler;
+    private final Handler<LimitRequest, List<LimitResponse>> holdLimitValueHandler;
+    private final FinalizeOperationHandler<LimitRequest> commitLimitValueHandler;
+    private final FinalizeOperationHandler<LimitRequest> rollbackLimitValueHandler;
+    private final Handler<LimitRequest, List<LimitResponse>> getLimitsValuesHandler;
+    private final Handler<List<String>, List<LimitResponse>> getLastLimitsValuesHandler;
+    private final LimitOperationsLoggingService limitOperationsLoggingService;
 
     @Override
     public LimitResponse create(CreateLimitRequest createLimitRequest) throws DuplicateLimitName, TException {
@@ -26,34 +29,40 @@ public class LiminatorService implements LiminatorServiceSrv.Iface {
     }
 
     @Override
-    public List<LimitResponse> hold(List<LimitRequest> list) throws LimitNotFound, TException {
-        return holdLimitAmountHandler.handle(list);
+    public List<LimitResponse> hold(LimitRequest limitRequest)
+            throws LimitNotFound, DuplicateOperation, OperationAlreadyInFinalState, TException {
+        List<LimitResponse> responses = holdLimitValueHandler.handle(limitRequest);
+        limitOperationsLoggingService.writeHoldOperations(limitRequest);
+        return responses;
     }
 
     @Override
-    public boolean commit(List<LimitRequest> list) throws LimitNotFound, TException {
+    public void commit(LimitRequest limitRequest) throws LimitNotFound, OperationNotFound, TException {
         try {
-            commitLimitAmountHandler.handle(list);
-            return true;
+            commitLimitValueHandler.handle(limitRequest);
+            limitOperationsLoggingService.writeCommitOperations(limitRequest);
         } catch (Exception ex) {
-            log.error("Commit execution exception. Request list: {}", list, ex);
-            return false;
+            log.error("Commit execution exception. Request: {}", limitRequest, ex);
         }
     }
 
     @Override
-    public boolean rollback(List<LimitRequest> list) throws LimitNotFound, TException {
+    public void rollback(LimitRequest limitRequest) throws LimitNotFound, OperationNotFound, TException {
         try {
-            rollbackLimitAmountHandler.handle(list);
-            return true;
+            rollbackLimitValueHandler.handle(limitRequest);
+            limitOperationsLoggingService.writeRollbackOperations(limitRequest);
         } catch (Exception ex) {
-            log.error("Commit execution exception. Request list: {}", list, ex);
-            return false;
+            log.error("Commit execution exception. Request: {}", limitRequest, ex);
         }
     }
 
     @Override
-    public List<LimitResponse> get(List<String> limitNames) throws LimitNotFound, TException {
-        return getLimitAmountHandler.handle(limitNames);
+    public List<LimitResponse> get(LimitRequest limitRequest) throws LimitNotFound, TException {
+        return getLimitsValuesHandler.handle(limitRequest);
+    }
+
+    @Override
+    public List<LimitResponse> getLastLimitsValues(List<String> limitNames) throws LimitNotFound, TException {
+        return getLastLimitsValuesHandler.handle(limitNames);
     }
 }

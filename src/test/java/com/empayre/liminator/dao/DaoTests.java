@@ -65,9 +65,10 @@ public class DaoTests {
             limitNamesList.add(limitName);
         }
         List<Operation> operations = new ArrayList<>();
+        String operationNameTemplate = "Operation-odc-1-%s";
         for (Long limitId : limitIdsList) {
             for (int i = 0; i < 5; i++) {
-                operations.add(createOperation(limitId, "Operation-odc-1-%s-%s".formatted(limitId, i)));
+                operations.add(createOperation(limitId, operationNameTemplate.formatted(i)));
             }
         }
         operationDao.saveBatch(operations);
@@ -77,30 +78,29 @@ public class DaoTests {
         currentLimitValue.forEach(value -> assertEquals(0, value.getCommitValue()));
         currentLimitValue.forEach(value -> assertNotEquals(0, value.getHoldValue()));
 
-        List<String> commitOperations = operations.subList(0, 20).stream()
-                .map(Operation::getOperationId)
-                .toList();
-        operationDao.commit(commitOperations);
-        List<String> rollbackOperations = operations.subList(20, 35).stream()
-                .map(Operation::getOperationId)
-                .toList();
-        operationDao.rollback(rollbackOperations);
+        List<String> commitLimitNames = limitNamesList.subList(0, 3);
+        String finalizeOperationName = operationNameTemplate.formatted(1);
+        operationDao.commit(commitLimitNames, finalizeOperationName);
+
+        List<String> rollbackLimitNames = limitNamesList.subList(4, 9);
+        operationDao.rollback(rollbackLimitNames, finalizeOperationName);
+
 
         List<LimitValue> limitValuesAfterChanges = operationDao.getCurrentLimitValue(limitNamesList);
         List<LimitValue> limitValuesWithCommitData = limitValuesAfterChanges.stream()
-                .filter(value -> value.getCommitValue() > 0 && value.getHoldValue() == 0)
+                .filter(value -> value.getCommitValue() == 100 && value.getHoldValue() == 400)
                 .toList();
-        assertEquals(4, limitValuesWithCommitData.size());
+        assertEquals(3, limitValuesWithCommitData.size());
 
-        List<LimitValue> limitValuesWithHoldData = limitValuesAfterChanges.stream()
-                .filter(value -> value.getCommitValue() == 0 && value.getHoldValue() > 0)
+        List<LimitValue> limitValuesAfterRollback = limitValuesAfterChanges.stream()
+                .filter(value -> value.getHoldValue() == 400 && value.getCommitValue() == 0)
                 .toList();
-        assertEquals(3, limitValuesWithHoldData.size());
+        assertEquals(5, limitValuesAfterRollback.size());
 
-        List<LimitValue> limitValuesWithoutData = limitValuesAfterChanges.stream()
-                .filter(value -> value.getCommitValue() == 0 && value.getHoldValue() == 0)
+        List<LimitValue> limitValuesWithoutChanges = limitValuesAfterChanges.stream()
+                .filter(value -> value.getCommitValue() == 0 && value.getHoldValue() == 500)
                 .toList();
-        assertEquals(3, limitValuesWithoutData.size());
+        assertEquals(2, limitValuesWithoutChanges.size());
     }
 
     @Test
@@ -136,7 +136,7 @@ public class DaoTests {
         operation.setLimitId(limitId);
         operation.setOperationId(operationId);
         operation.setState(OperationState.HOLD);
-        operation.setAmount(100L);
+        operation.setOperationValue(100L);
         operation.setCreatedAt(createdAt);
         return operation;
     }

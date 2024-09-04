@@ -165,7 +165,7 @@
         <dependency>
             <groupId>dev.vality</groupId>
             <artifactId>liminator-proto</artifactId>
-            <version>1.2-63529e6</version>
+            <version>1.3-3e2cc01</version>
         </dependency>
         <dependency>
             <groupId>dev.vality.woody</groupId>
