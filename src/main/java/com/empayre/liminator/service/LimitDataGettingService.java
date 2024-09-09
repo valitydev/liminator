@@ -19,8 +19,8 @@ public class LimitDataGettingService {
 
     private final LimitDataDao limitDataDao;
 
-    public List<LimitData> get(LimitRequest requestList, String source) throws TException {
-        List<String> limitNames = requestList.getLimitNames();
+    public List<LimitData> get(LimitRequest request, String source) throws TException {
+        List<String> limitNames = request.getLimitNames();
         List<LimitData> limitData = limitDataDao.get(limitNames);
         if (CollectionUtils.isEmpty(limitData)) {
             log.error("[{}] Limits not found: {}", source, limitNames);

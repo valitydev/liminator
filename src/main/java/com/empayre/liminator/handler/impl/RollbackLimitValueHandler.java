@@ -4,6 +4,7 @@ import com.empayre.liminator.dao.OperationDao;
 import com.empayre.liminator.handler.FinalizeOperationHandler;
 import com.empayre.liminator.service.LimitDataGettingService;
 import dev.vality.liminator.LimitRequest;
+import dev.vality.liminator.OperationNotFound;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.thrift.TException;
@@ -34,6 +35,7 @@ public class RollbackLimitValueHandler implements FinalizeOperationHandler<Limit
             log.error("[{}] Count of updated rows ({}) is not equal to the count of source rollback operations " +
                             "(operationId: {}, rollback size: {})",
                     LOG_PREFIX, updatedRowsCount, operationId, limitNames.size());
+            throw new OperationNotFound();
         }
     }
 }
