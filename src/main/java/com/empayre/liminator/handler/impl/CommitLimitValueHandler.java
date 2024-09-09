@@ -38,7 +38,7 @@ public class CommitLimitValueHandler implements FinalizeOperationHandler<LimitRe
         int updatedRowsCount = operationDao.commit(limitNames, operationId);
         if (updatedRowsCount != limitNames.size()) {
             log.error("[{}] Count of updated rows ({}) is not equal to the count of source commit operations " +
-                            "(operationId: {}, rollback size: {})",
+                            "(operationId: {}, commit size: {})",
                     LOG_PREFIX, updatedRowsCount, operationId, limitNames.size());
             throw new OperationNotFound();
         }
