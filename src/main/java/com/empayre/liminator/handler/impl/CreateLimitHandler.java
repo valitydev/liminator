@@ -1,9 +1,10 @@
-package com.empayre.liminator.handler;
+package com.empayre.liminator.handler.impl;
 
 import com.empayre.liminator.dao.LimitContextDao;
 import com.empayre.liminator.dao.LimitDataDao;
 import com.empayre.liminator.domain.tables.pojos.LimitContext;
 import com.empayre.liminator.domain.tables.pojos.LimitData;
+import com.empayre.liminator.handler.Handler;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.vality.liminator.CreateLimitRequest;

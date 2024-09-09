@@ -4,7 +4,6 @@ import com.empayre.liminator.dao.AbstractDao;
 import com.empayre.liminator.dao.OperationDao;
 import com.empayre.liminator.domain.enums.OperationState;
 import com.empayre.liminator.domain.tables.pojos.Operation;
-import com.empayre.liminator.domain.tables.records.OperationRecord;
 import com.empayre.liminator.exception.DaoException;
 import com.empayre.liminator.model.LimitValue;
 import org.springframework.stereotype.Component;
@@ -13,6 +12,7 @@ import javax.sql.DataSource;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static com.empayre.liminator.domain.Tables.LIMIT_DATA;
 import static com.empayre.liminator.domain.Tables.OPERATION;
 import static org.jooq.impl.DSL.raw;
 import static org.jooq.impl.DSL.val;
@@ -46,27 +46,35 @@ public class OperationDaoImpl extends AbstractDao implements OperationDao {
 
     @Override
     public void saveBatch(List<Operation> operations) {
-        List<OperationRecord> records = operations.stream()
+        var records = operations.stream()
                 .map(operation -> getDslContext().newRecord(OPERATION, operation))
                 .toList();
-        getDslContext().batchInsert(records).execute();
+        getDslContext()
+                .batchInsert(records)
+                .execute();
     }
 
     @Override
-    public int commit(List<String> operationIds) {
-        return updateStateForHoldOperation(operationIds, OperationState.COMMIT);
+    public int commit(List<String> limitNames, String operationId) {
+        return updateStateForHoldOperation(limitNames, operationId, OperationState.COMMIT);
     }
 
     @Override
-    public int rollback(List<String> operationIds) {
-        return updateStateForHoldOperation(operationIds, OperationState.ROLLBACK);
+    public int rollback(List<String> limitNames, String operationId) {
+        return updateStateForHoldOperation(limitNames, operationId, OperationState.ROLLBACK);
     }
 
-    private int updateStateForHoldOperation(List<String> operationIds, OperationState state) {
+    private int updateStateForHoldOperation(List<String> limitNames, String operationId, OperationState state) {
         return getDslContext()
                 .update(OPERATION)
                 .set(OPERATION.STATE, state)
-                .where(OPERATION.OPERATION_ID.in(operationIds))
+                .where(OPERATION.OPERATION_ID.eq(operationId))
+                .and(OPERATION.LIMIT_ID.in(
+                        getDslContext()
+                                .select(LIMIT_DATA.ID)
+                                .from(LIMIT_DATA)
+                                .where(LIMIT_DATA.NAME.in(limitNames))
+                ))
                 .and(OPERATION.STATE.eq(OperationState.HOLD))
                 .execute();
     }
@@ -75,14 +83,14 @@ public class OperationDaoImpl extends AbstractDao implements OperationDao {
     public List<LimitValue> getCurrentLimitValue(List<String> limitNames) {
         String sql = """
                 with hold_data as (
-                    select ld.id, ld.name, coalesce(sum(ops.amount), 0) as hold_value
+                    select ld.id, ld.name, coalesce(sum(ops.operation_value), 0) as hold_value
                     from lim.limit_data as ld
                     left join lim.operation as ops
                       on ops.limit_id = ld.id and ops.state = 'HOLD'
                     where ld.name in ({0})
                     group by ld.id, ld.name
                 ), commit_data as (
-                    select ld.id, ld.name, coalesce(sum(ops.amount), 0) as commit_value
+                    select ld.id, ld.name, coalesce(sum(ops.operation_value), 0) as commit_value
                     from lim.limit_data as ld
                     left join lim.operation as ops
                       on ops.limit_id = ld.id and ops.state = 'COMMIT'
@@ -107,7 +115,7 @@ public class OperationDaoImpl extends AbstractDao implements OperationDao {
                     from lim.operation
                     where operation_id = {0}
                 ), hold_data as (
-                    select ld.id, ld.name, coalesce(sum(ops.amount), 0) as hold_amount
+                    select ld.id, ld.name, coalesce(sum(ops.operation_value), 0) as hold_value
                     from lim.limit_data as ld
                     left join lim.operation as ops
                       on ops.limit_id = ld.id
@@ -116,7 +124,7 @@ public class OperationDaoImpl extends AbstractDao implements OperationDao {
                     where ld.name in ({1})
                     group by ld.id, ld.name
                 ), commit_data as (
-                    select ld.id, ld.name, coalesce(sum(ops.amount), 0) as commit_amount
+                    select ld.id, ld.name, coalesce(sum(ops.operation_value), 0) as commit_value
                     from lim.limit_data as ld
                     left join lim.operation as ops
                       on ops.limit_id = ld.id
@@ -126,7 +134,7 @@ public class OperationDaoImpl extends AbstractDao implements OperationDao {
                     group by ld.id, ld.name
                 )
                                 
-                select cd.name as limit_name, cd.commit_amount, hd.hold_amount
+                select cd.name as limit_name, cd.commit_value, hd.hold_value
                 from commit_data as cd
                 join hold_data as hd on cd.id = hd.id;
                 """;

@@ -16,7 +16,7 @@ public class OperationConverterImpl implements OperationConverter {
         Operation operation = new Operation();
         operation.setLimitId(limitId);
         operation.setOperationId(request.getOperationId());
-        operation.setAmount(request.getValue());
+        operation.setOperationValue(request.getValue());
         operation.setCreatedAt(LocalDateTime.now());
         operation.setState(OperationState.HOLD);
         return operation;
