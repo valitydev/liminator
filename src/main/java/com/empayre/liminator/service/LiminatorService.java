@@ -1,5 +1,6 @@
 package com.empayre.liminator.service;
 
+import com.empayre.liminator.domain.enums.OperationState;
 import com.empayre.liminator.handler.FinalizeOperationHandler;
 import com.empayre.liminator.handler.Handler;
 import dev.vality.liminator.*;
@@ -17,8 +18,7 @@ public class LiminatorService implements LiminatorServiceSrv.Iface {
 
     private final Handler<CreateLimitRequest, LimitResponse> createLimitHandler;
     private final Handler<LimitRequest, List<LimitResponse>> holdLimitValueHandler;
-    private final FinalizeOperationHandler<LimitRequest> commitLimitValueHandler;
-    private final FinalizeOperationHandler<LimitRequest> rollbackLimitValueHandler;
+    private final FinalizeOperationHandler finalizeOperationHandler;
     private final Handler<LimitRequest, List<LimitResponse>> getLimitsValuesHandler;
     private final Handler<List<String>, List<LimitResponse>> getLastLimitsValuesHandler;
     private final LimitOperationsLoggingService limitOperationsLoggingService;
@@ -39,7 +39,7 @@ public class LiminatorService implements LiminatorServiceSrv.Iface {
     @Override
     public void commit(LimitRequest limitRequest) throws LimitNotFound, OperationNotFound, TException {
         try {
-            commitLimitValueHandler.handle(limitRequest);
+            finalizeOperationHandler.handle(limitRequest, OperationState.COMMIT);
             limitOperationsLoggingService.writeCommitOperations(limitRequest);
         } catch (Exception ex) {
             log.error("Commit execution exception. Request: {}", limitRequest, ex);
@@ -49,7 +49,7 @@ public class LiminatorService implements LiminatorServiceSrv.Iface {
     @Override
     public void rollback(LimitRequest limitRequest) throws LimitNotFound, OperationNotFound, TException {
         try {
-            rollbackLimitValueHandler.handle(limitRequest);
+            finalizeOperationHandler.handle(limitRequest, OperationState.ROLLBACK);
             limitOperationsLoggingService.writeRollbackOperations(limitRequest);
         } catch (Exception ex) {
             log.error("Commit execution exception. Request: {}", limitRequest, ex);

@@ -2,14 +2,17 @@ package com.empayre.liminator.handler.impl;
 
 import com.empayre.liminator.converter.OperationConverter;
 import com.empayre.liminator.dao.OperationDao;
+import com.empayre.liminator.domain.enums.OperationState;
 import com.empayre.liminator.domain.tables.pojos.LimitData;
 import com.empayre.liminator.domain.tables.pojos.Operation;
 import com.empayre.liminator.handler.Handler;
 import com.empayre.liminator.model.LimitValue;
 import com.empayre.liminator.service.LimitDataGettingService;
 import com.empayre.liminator.util.LimitDataUtils;
+import dev.vality.liminator.DuplicateOperation;
 import dev.vality.liminator.LimitRequest;
 import dev.vality.liminator.LimitResponse;
+import dev.vality.liminator.OperationAlreadyInFinalState;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.thrift.TException;
@@ -38,11 +41,31 @@ public class HoldLimitValueHandler implements Handler<LimitRequest, List<LimitRe
     @Override
     public List<LimitResponse> handle(LimitRequest request) throws TException {
         if (request == null || CollectionUtils.isEmpty(request.getLimitNames())) {
-            log.warn("LimitRequest or LimitNames is empty. Request: {}", request);
+            log.warn("[{}] LimitRequest or LimitNames is empty. Request: {}", LOG_PREFIX, request);
             return new ArrayList<>();
         }
         List<LimitData> limitData = limitDataGettingService.get(request, LOG_PREFIX);
         Map<String, Long> limitNamesMap = LimitDataUtils.createLimitNamesMap(limitData);
+        String operationId = request.getOperationId();
+
+        List<Operation> existedHoldOperations =
+                operationDao.get(operationId, limitNamesMap.values(), List.of(OperationState.HOLD));
+        if (!CollectionUtils.isEmpty(existedHoldOperations)) {
+            log.error("[{}] DB already has hold operation {}: {}", LOG_PREFIX, operationId, existedHoldOperations);
+            throw new DuplicateOperation();
+        }
+
+        List<Operation> existedFinalizeOperations = operationDao.get(
+                operationId,
+                limitNamesMap.values(),
+                List.of(OperationState.COMMIT, OperationState.ROLLBACK)
+        );
+        if (!CollectionUtils.isEmpty(existedFinalizeOperations)) {
+            log.error("[{}] DB already has commit/rollback operation {}: {}",
+                    LOG_PREFIX, operationId, existedFinalizeOperations);
+            throw new OperationAlreadyInFinalState();
+        }
+
         List<Operation> operations = convertToOperation(request, limitNamesMap);
         operationDao.saveBatch(operations);
 
