@@ -1,8 +1,10 @@
 package com.empayre.liminator.handler;
 
+import com.empayre.liminator.domain.enums.OperationState;
+import dev.vality.liminator.LimitRequest;
 import org.apache.thrift.TException;
 
-public interface FinalizeOperationHandler<T> {
+public interface FinalizeOperationHandler {
 
-    void handle(T source) throws TException;
+    void handle(LimitRequest request, OperationState state) throws TException;
 }

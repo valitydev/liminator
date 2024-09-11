@@ -9,6 +9,7 @@ import com.empayre.liminator.model.LimitValue;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
+import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -42,6 +43,25 @@ public class OperationDaoImpl extends AbstractDao implements OperationDao {
                 .selectFrom(OPERATION)
                 .where(OPERATION.ID.eq(id))
                 .fetchOneInto(Operation.class);
+    }
+
+    @Override
+    public List<Operation> get(String operationId, List<OperationState> states) {
+        return getDslContext()
+                .selectFrom(OPERATION)
+                .where(OPERATION.OPERATION_ID.eq(operationId))
+                .and(OPERATION.STATE.in(states))
+                .fetchInto(Operation.class);
+    }
+
+    @Override
+    public List<Operation> get(String operationId, Collection<Long> limitIds, List<OperationState> states) {
+        return getDslContext()
+                .selectFrom(OPERATION)
+                .where(OPERATION.OPERATION_ID.eq(operationId))
+                .and(OPERATION.LIMIT_ID.in(limitIds))
+                .and(OPERATION.STATE.in(states))
+                .fetchInto(Operation.class);
     }
 
     @Override
