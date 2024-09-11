@@ -46,15 +46,33 @@ public class HoldLimitValueHandler implements Handler<LimitRequest, List<LimitRe
         }
         List<LimitData> limitData = limitDataGettingService.get(request, LOG_PREFIX);
         Map<String, Long> limitNamesMap = LimitDataUtils.createLimitNamesMap(limitData);
-        String operationId = request.getOperationId();
 
+        String operationId = request.getOperationId();
+        checkExistedHoldOperations(limitNamesMap, operationId);
+        checkExistedFinalizeOperations(limitNamesMap, operationId);
+
+        operationDao.saveBatch(convertToOperation(request, limitNamesMap));
+
+        List<LimitValue> currentLimitValues = operationDao.getCurrentLimitValue(request.getLimitNames());
+        return currentLimitValuesToLimitResponseConverter.convert(currentLimitValues);
+    }
+
+    private List<Operation> convertToOperation(LimitRequest request, Map<String, Long> limitNamesMap) {
+        return request.getLimitNames().stream()
+                .map(limitName -> operationConverter.convert(request, limitNamesMap.get(limitName)))
+                .toList();
+    }
+
+    private void checkExistedHoldOperations(Map<String, Long> limitNamesMap, String operationId) throws TException {
         List<Operation> existedHoldOperations =
                 operationDao.get(operationId, limitNamesMap.values(), List.of(OperationState.HOLD));
         if (!CollectionUtils.isEmpty(existedHoldOperations)) {
             log.error("[{}] DB already has hold operation {}: {}", LOG_PREFIX, operationId, existedHoldOperations);
             throw new DuplicateOperation();
         }
+    }
 
+    private void checkExistedFinalizeOperations(Map<String, Long> limitNamesMap, String operationId) throws TException {
         List<Operation> existedFinalizeOperations = operationDao.get(
                 operationId,
                 limitNamesMap.values(),
@@ -65,17 +83,5 @@ public class HoldLimitValueHandler implements Handler<LimitRequest, List<LimitRe
                     LOG_PREFIX, operationId, existedFinalizeOperations);
             throw new OperationAlreadyInFinalState();
         }
-
-        List<Operation> operations = convertToOperation(request, limitNamesMap);
-        operationDao.saveBatch(operations);
-
-        List<String> limitNames = request.getLimitNames();
-        return currentLimitValuesToLimitResponseConverter.convert(operationDao.getCurrentLimitValue(limitNames));
-    }
-
-    private List<Operation> convertToOperation(LimitRequest request, Map<String, Long> limitNamesMap) {
-        return request.getLimitNames().stream()
-                .map(limitName -> operationConverter.convert(request, limitNamesMap.get(limitName)))
-                .toList();
     }
 }
