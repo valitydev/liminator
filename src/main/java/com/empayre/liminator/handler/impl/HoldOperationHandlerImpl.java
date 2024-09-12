@@ -5,56 +5,47 @@ import com.empayre.liminator.dao.OperationDao;
 import com.empayre.liminator.domain.enums.OperationState;
 import com.empayre.liminator.domain.tables.pojos.LimitData;
 import com.empayre.liminator.domain.tables.pojos.Operation;
-import com.empayre.liminator.handler.Handler;
-import com.empayre.liminator.model.LimitValue;
+import com.empayre.liminator.handler.HoldOperationHandler;
 import com.empayre.liminator.service.LimitDataGettingService;
+import com.empayre.liminator.service.LimitOperationsLoggingService;
 import com.empayre.liminator.util.LimitDataUtils;
 import dev.vality.liminator.DuplicateOperation;
 import dev.vality.liminator.LimitRequest;
-import dev.vality.liminator.LimitResponse;
 import dev.vality.liminator.OperationAlreadyInFinalState;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.thrift.TException;
-import org.springframework.core.convert.converter.Converter;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 @Slf4j
 @Component
+@Transactional
 @RequiredArgsConstructor
-public class HoldLimitValueHandler implements Handler<LimitRequest, List<LimitResponse>> {
+public class HoldOperationHandlerImpl implements HoldOperationHandler {
 
     private final OperationDao operationDao;
     private final LimitDataGettingService limitDataGettingService;
-    private final Converter<List<LimitValue>, List<LimitResponse>> currentLimitValuesToLimitResponseConverter;
     private final OperationConverter operationConverter;
+    private final LimitOperationsLoggingService limitOperationsLoggingService;
 
     private static final String LOG_PREFIX = "HOLD";
 
     @Transactional
     @Override
-    public List<LimitResponse> handle(LimitRequest request) throws TException {
-        if (request == null || CollectionUtils.isEmpty(request.getLimitNames())) {
-            log.warn("[{}] LimitRequest or LimitNames is empty. Request: {}", LOG_PREFIX, request);
-            return new ArrayList<>();
-        }
+    public void handle(LimitRequest request) throws TException {
         List<LimitData> limitData = limitDataGettingService.get(request, LOG_PREFIX);
         Map<String, Long> limitNamesMap = LimitDataUtils.createLimitNamesMap(limitData);
 
-        String operationId = request.getOperationId();
-        checkExistedHoldOperations(limitNamesMap, operationId);
-        checkExistedFinalizeOperations(limitNamesMap, operationId);
+        checkExistedHoldOperations(limitNamesMap, request.getOperationId());
+        checkExistedFinalizeOperations(limitNamesMap, request.getOperationId());
 
         operationDao.saveBatch(convertToOperation(request, limitNamesMap));
-
-        List<LimitValue> currentLimitValues = operationDao.getCurrentLimitValue(request.getLimitNames());
-        return currentLimitValuesToLimitResponseConverter.convert(currentLimitValues);
+        limitOperationsLoggingService.writeOperations(request, OperationState.HOLD);
     }
 
     private List<Operation> convertToOperation(LimitRequest request, Map<String, Long> limitNamesMap) {

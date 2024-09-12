@@ -4,16 +4,15 @@ import com.empayre.liminator.dao.AbstractDao;
 import com.empayre.liminator.dao.LimitContextDao;
 import com.empayre.liminator.domain.tables.pojos.LimitContext;
 import com.empayre.liminator.exception.DaoException;
+import org.jooq.impl.DataSourceConnectionProvider;
 import org.springframework.stereotype.Component;
-
-import javax.sql.DataSource;
 
 import static com.empayre.liminator.domain.Tables.LIMIT_CONTEXT;
 
 @Component
 public class LimitContextDaoImpl extends AbstractDao implements LimitContextDao {
 
-    public LimitContextDaoImpl(DataSource dataSource) {
+    public LimitContextDaoImpl(DataSourceConnectionProvider dataSource) {
         super(dataSource);
     }
 

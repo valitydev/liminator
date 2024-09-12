@@ -21,9 +21,10 @@ public class GetLastLimitsValuesHandler implements Handler<List<String>, List<Li
     private final OperationDao operationDao;
     private final Converter<List<LimitValue>, List<LimitResponse>> currentLimitValuesToLimitResponseConverter;
 
-    @Override
     @Transactional
+    @Override
     public List<LimitResponse> handle(List<String> limitIdNames) throws TException {
-        return currentLimitValuesToLimitResponseConverter.convert(operationDao.getCurrentLimitValue(limitIdNames));
+        List<LimitValue> currentLimitValues = operationDao.getCurrentLimitValue(limitIdNames);
+        return currentLimitValuesToLimitResponseConverter.convert(currentLimitValues);
     }
 }

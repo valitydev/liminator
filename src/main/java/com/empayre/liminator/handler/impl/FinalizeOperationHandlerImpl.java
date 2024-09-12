@@ -6,6 +6,7 @@ import com.empayre.liminator.domain.tables.pojos.LimitData;
 import com.empayre.liminator.domain.tables.pojos.Operation;
 import com.empayre.liminator.handler.FinalizeOperationHandler;
 import com.empayre.liminator.service.LimitDataGettingService;
+import com.empayre.liminator.service.LimitOperationsLoggingService;
 import dev.vality.liminator.LimitRequest;
 import dev.vality.liminator.OperationNotFound;
 import lombok.RequiredArgsConstructor;
@@ -24,9 +25,10 @@ public class FinalizeOperationHandlerImpl implements FinalizeOperationHandler {
 
     private final OperationDao operationDao;
     private final LimitDataGettingService limitDataGettingService;
+    private final LimitOperationsLoggingService limitOperationsLoggingService;
 
-    @Override
     @Transactional
+    @Override
     public void handle(LimitRequest request, OperationState state) throws TException {
         List<LimitData> limitData = limitDataGettingService.get(request, state.getLiteral());
         checkExistedHoldOperations(request, limitData, state);
@@ -38,6 +40,7 @@ public class FinalizeOperationHandlerImpl implements FinalizeOperationHandler {
         };
 
         checkUpdatedOperstionsConsistency(request, state, updatedRowsCount);
+        limitOperationsLoggingService.writeOperations(request, state);
     }
 
     private void checkExistedHoldOperations(LimitRequest request,
