@@ -56,7 +56,7 @@ public class LiminatorService implements LiminatorServiceSrv.Iface {
         try {
             finalizeOperationHandler.handle(request, OperationState.ROLLBACK);
         } catch (Exception ex) {
-            log.error("Commit execution exception. Request: {}", request, ex);
+            log.error("Rollback execution exception. Request: {}", request, ex);
         }
     }
 
@@ -76,7 +76,7 @@ public class LiminatorService implements LiminatorServiceSrv.Iface {
             throws LimitNotFound, LimitsValuesReadingException, TException {
         try {
             return getLastLimitsValuesHandler.handle(limitNames);
-        } catch (Exception ex) {
+        } catch (DaoException ex) {
             log.error("[GET] Received DaoException for getting last limits operation (limitNames: {})", limitNames, ex);
             throw new LimitsValuesReadingException();
         }
