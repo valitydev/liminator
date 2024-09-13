@@ -1,14 +1,18 @@
 package com.empayre.liminator.service;
 
 import com.empayre.liminator.domain.enums.OperationState;
+import com.empayre.liminator.exception.DaoException;
 import com.empayre.liminator.handler.FinalizeOperationHandler;
 import com.empayre.liminator.handler.Handler;
+import com.empayre.liminator.handler.HoldOperationHandler;
 import dev.vality.liminator.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.thrift.TException;
 import org.springframework.stereotype.Component;
+import org.springframework.util.CollectionUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -17,11 +21,10 @@ import java.util.List;
 public class LiminatorService implements LiminatorServiceSrv.Iface {
 
     private final Handler<CreateLimitRequest, LimitResponse> createLimitHandler;
-    private final Handler<LimitRequest, List<LimitResponse>> holdLimitValueHandler;
+    private final HoldOperationHandler holdOperationHandler;
     private final FinalizeOperationHandler finalizeOperationHandler;
     private final Handler<LimitRequest, List<LimitResponse>> getLimitsValuesHandler;
     private final Handler<List<String>, List<LimitResponse>> getLastLimitsValuesHandler;
-    private final LimitOperationsLoggingService limitOperationsLoggingService;
 
     @Override
     public LimitResponse create(CreateLimitRequest createLimitRequest) throws DuplicateLimitName, TException {
@@ -29,40 +32,53 @@ public class LiminatorService implements LiminatorServiceSrv.Iface {
     }
 
     @Override
-    public List<LimitResponse> hold(LimitRequest limitRequest)
+    public List<LimitResponse> hold(LimitRequest request)
             throws LimitNotFound, DuplicateOperation, OperationAlreadyInFinalState, TException {
-        List<LimitResponse> responses = holdLimitValueHandler.handle(limitRequest);
-        limitOperationsLoggingService.writeHoldOperations(limitRequest);
-        return responses;
+        if (request == null || CollectionUtils.isEmpty(request.getLimitNames())) {
+            log.warn("[HOLD] LimitRequest or LimitNames is empty. Request: {}", request);
+            return new ArrayList<>();
+        }
+        holdOperationHandler.handle(request);
+        return get(request);
     }
 
     @Override
-    public void commit(LimitRequest limitRequest) throws LimitNotFound, OperationNotFound, TException {
+    public void commit(LimitRequest request) throws LimitNotFound, OperationNotFound, TException {
         try {
-            finalizeOperationHandler.handle(limitRequest, OperationState.COMMIT);
-            limitOperationsLoggingService.writeCommitOperations(limitRequest);
+            finalizeOperationHandler.handle(request, OperationState.COMMIT);
         } catch (Exception ex) {
-            log.error("Commit execution exception. Request: {}", limitRequest, ex);
+            log.error("Commit execution exception. Request: {}", request, ex);
         }
     }
 
     @Override
-    public void rollback(LimitRequest limitRequest) throws LimitNotFound, OperationNotFound, TException {
+    public void rollback(LimitRequest request) throws LimitNotFound, OperationNotFound, TException {
         try {
-            finalizeOperationHandler.handle(limitRequest, OperationState.ROLLBACK);
-            limitOperationsLoggingService.writeRollbackOperations(limitRequest);
+            finalizeOperationHandler.handle(request, OperationState.ROLLBACK);
         } catch (Exception ex) {
-            log.error("Commit execution exception. Request: {}", limitRequest, ex);
+            log.error("Rollback execution exception. Request: {}", request, ex);
         }
     }
 
     @Override
-    public List<LimitResponse> get(LimitRequest limitRequest) throws LimitNotFound, TException {
-        return getLimitsValuesHandler.handle(limitRequest);
+    public List<LimitResponse> get(LimitRequest request)
+            throws LimitNotFound, LimitsValuesReadingException, TException {
+        try {
+            return getLimitsValuesHandler.handle(request);
+        } catch (DaoException ex) {
+            log.error("[GET] Received DaoException for getting limits operation (request: {})", request, ex);
+            throw new LimitsValuesReadingException();
+        }
     }
 
     @Override
-    public List<LimitResponse> getLastLimitsValues(List<String> limitNames) throws LimitNotFound, TException {
-        return getLastLimitsValuesHandler.handle(limitNames);
+    public List<LimitResponse> getLastLimitsValues(List<String> limitNames)
+            throws LimitNotFound, LimitsValuesReadingException, TException {
+        try {
+            return getLastLimitsValuesHandler.handle(limitNames);
+        } catch (DaoException ex) {
+            log.error("[GET] Received DaoException for getting last limits operation (limitNames: {})", limitNames, ex);
+            throw new LimitsValuesReadingException();
+        }
     }
 }

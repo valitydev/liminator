@@ -6,9 +6,9 @@ import com.empayre.liminator.domain.enums.OperationState;
 import com.empayre.liminator.domain.tables.pojos.Operation;
 import com.empayre.liminator.exception.DaoException;
 import com.empayre.liminator.model.LimitValue;
+import org.jooq.impl.DataSourceConnectionProvider;
 import org.springframework.stereotype.Component;
 
-import javax.sql.DataSource;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -21,7 +21,7 @@ import static org.jooq.impl.DSL.val;
 @Component
 public class OperationDaoImpl extends AbstractDao implements OperationDao {
 
-    public OperationDaoImpl(DataSource dataSource) {
+    public OperationDaoImpl(DataSourceConnectionProvider dataSource) {
         super(dataSource);
     }
 

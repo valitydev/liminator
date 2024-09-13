@@ -4,9 +4,8 @@ import com.empayre.liminator.dao.AbstractDao;
 import com.empayre.liminator.dao.LimitDataDao;
 import com.empayre.liminator.domain.tables.pojos.LimitData;
 import com.empayre.liminator.exception.DaoException;
+import org.jooq.impl.DataSourceConnectionProvider;
 import org.springframework.stereotype.Component;
-
-import javax.sql.DataSource;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -17,7 +16,7 @@ import static com.empayre.liminator.domain.Tables.LIMIT_DATA;
 @Component
 public class LimitDataDaoImpl extends AbstractDao implements LimitDataDao {
 
-    public LimitDataDaoImpl(DataSource dataSource) {
+    public LimitDataDaoImpl(DataSourceConnectionProvider dataSource) {
         super(dataSource);
     }
 

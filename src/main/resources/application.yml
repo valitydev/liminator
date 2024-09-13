@@ -19,16 +19,6 @@ spring:
     schemas: lim
   jooq:
     sql-dialect: Postgres
-  kafka:
-    bootstrap-servers: localhost:9092
-    client-id: dominant_warehouse
-    consumer:
-      enable-auto-commit: false
-      auto-offset-reset: earliest
-      max-poll-records: 20
-      properties:
-        max.poll.interval.ms: 30000
-        session.timeout.ms: 30000
 
 service:
   default:
@@ -76,14 +66,6 @@ kafka:
     wallet:
       id: mg-events-ff-wallet
       enabled: false
-
-dmt:
-  url: http://dominant:8022/v1/domain/repository
-  networkTimeout: 5000
-  polling:
-    delay: 100
-    maxQuerySize: 10
-    enabled: false
 
 cache:
   party-shop:

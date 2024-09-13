@@ -22,8 +22,8 @@ public class GetLimitsValuesHandler implements Handler<LimitRequest, List<LimitR
     private final OperationDao operationDao;
     private final Converter<List<LimitValue>, List<LimitResponse>> currentLimitValuesToLimitResponseConverter;
 
-    @Override
     @Transactional
+    @Override
     public List<LimitResponse> handle(LimitRequest request) throws TException {
         List<LimitValue> limitValues =
                 operationDao.getCurrentLimitValue(request.getLimitNames(), request.getOperationId());
