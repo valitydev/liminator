@@ -1,12 +1,12 @@
 package com.empayre.liminator.dao.impl;
 
-import com.empayre.liminator.dao.AbstractDao;
 import com.empayre.liminator.dao.OperationDao;
 import com.empayre.liminator.domain.enums.OperationState;
 import com.empayre.liminator.domain.tables.pojos.Operation;
-import com.empayre.liminator.exception.DaoException;
 import com.empayre.liminator.model.LimitValue;
-import org.jooq.impl.DataSourceConnectionProvider;
+import lombok.RequiredArgsConstructor;
+import org.jooq.DSLContext;
+import org.jooq.Query;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
@@ -19,19 +19,18 @@ import static org.jooq.impl.DSL.raw;
 import static org.jooq.impl.DSL.val;
 
 @Component
-public class OperationDaoImpl extends AbstractDao implements OperationDao {
+@RequiredArgsConstructor
+public class OperationDaoImpl implements OperationDao {
 
-    public OperationDaoImpl(DataSourceConnectionProvider dataSource) {
-        super(dataSource);
-    }
+    private final DSLContext dslContext;
 
     private static final String DELIMITER = " ,";
 
     @Override
-    public Long save(Operation operation) throws DaoException {
-        return getDslContext()
+    public Long save(Operation operation) {
+        return dslContext
                 .insertInto(OPERATION)
-                .set(getDslContext().newRecord(OPERATION, operation))
+                .set(dslContext.newRecord(OPERATION, operation))
                 .returning(OPERATION.ID)
                 .fetchOne()
                 .getId();
@@ -39,7 +38,7 @@ public class OperationDaoImpl extends AbstractDao implements OperationDao {
 
     @Override
     public Operation get(Long id) {
-        return getDslContext()
+        return dslContext
                 .selectFrom(OPERATION)
                 .where(OPERATION.ID.eq(id))
                 .fetchOneInto(Operation.class);
@@ -47,7 +46,7 @@ public class OperationDaoImpl extends AbstractDao implements OperationDao {
 
     @Override
     public List<Operation> get(String operationId, List<OperationState> states) {
-        return getDslContext()
+        return dslContext
                 .selectFrom(OPERATION)
                 .where(OPERATION.OPERATION_ID.eq(operationId))
                 .and(OPERATION.STATE.in(states))
@@ -56,7 +55,7 @@ public class OperationDaoImpl extends AbstractDao implements OperationDao {
 
     @Override
     public List<Operation> get(String operationId, Collection<Long> limitIds, List<OperationState> states) {
-        return getDslContext()
+        return dslContext
                 .selectFrom(OPERATION)
                 .where(OPERATION.OPERATION_ID.eq(operationId))
                 .and(OPERATION.LIMIT_ID.in(limitIds))
@@ -66,11 +65,17 @@ public class OperationDaoImpl extends AbstractDao implements OperationDao {
 
     @Override
     public void saveBatch(List<Operation> operations) {
-        var records = operations.stream()
-                .map(operation -> getDslContext().newRecord(OPERATION, operation))
-                .toList();
-        getDslContext()
-                .batchInsert(records)
+        var inserts = operations.stream()
+                .map(operation ->
+                        dslContext
+                                .insertInto(OPERATION)
+                                .set(dslContext.newRecord(OPERATION, operation))
+                                .onConflict(OPERATION.LIMIT_ID, OPERATION.OPERATION_ID)
+                                .doNothing()
+                )
+                .toArray(Query[]::new);
+        dslContext
+                .batch(inserts)
                 .execute();
     }
 
@@ -85,12 +90,12 @@ public class OperationDaoImpl extends AbstractDao implements OperationDao {
     }
 
     private int updateStateForHoldOperation(List<String> limitNames, String operationId, OperationState state) {
-        return getDslContext()
+        return dslContext
                 .update(OPERATION)
                 .set(OPERATION.STATE, state)
                 .where(OPERATION.OPERATION_ID.eq(operationId))
                 .and(OPERATION.LIMIT_ID.in(
-                        getDslContext()
+                        dslContext
                                 .select(LIMIT_DATA.ID)
                                 .from(LIMIT_DATA)
                                 .where(LIMIT_DATA.NAME.in(limitNames))
@@ -122,7 +127,7 @@ public class OperationDaoImpl extends AbstractDao implements OperationDao {
                 from commit_data as cd
                 join hold_data as hd on cd.id = hd.id;
                 """;
-        return getDslContext()
+        return dslContext
                 .resultQuery(sql, raw(arrayToString(limitNames)))
                 .fetchInto(LimitValue.class);
     }
@@ -158,7 +163,7 @@ public class OperationDaoImpl extends AbstractDao implements OperationDao {
                 from commit_data as cd
                 join hold_data as hd on cd.id = hd.id;
                 """;
-        return getDslContext()
+        return dslContext
                 .resultQuery(sql, val(operationId), raw(arrayToString(limitNames)))
                 .fetchInto(LimitValue.class);
     }
