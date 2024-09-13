@@ -15,6 +15,7 @@ import dev.vality.liminator.OperationAlreadyInFinalState;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.thrift.TException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -33,6 +34,9 @@ public class HoldOperationHandlerImpl implements HoldOperationHandler {
     private final OperationConverter operationConverter;
     private final LimitOperationsLoggingService limitOperationsLoggingService;
 
+    @Value("${service.skipExistedHoldOps}")
+    private boolean skipExistedHoldOps;
+
     private static final String LOG_PREFIX = "HOLD";
 
     @Transactional
@@ -41,8 +45,10 @@ public class HoldOperationHandlerImpl implements HoldOperationHandler {
         List<LimitData> limitData = limitDataGettingService.get(request, LOG_PREFIX);
         Map<String, Long> limitNamesMap = LimitDataUtils.createLimitNamesMap(limitData);
 
-        checkExistedHoldOperations(limitNamesMap, request.getOperationId());
         checkExistedFinalizeOperations(limitNamesMap, request.getOperationId());
+        if (!skipExistedHoldOps) {
+            checkExistedHoldOperations(limitNamesMap, request.getOperationId());
+        }
 
         operationDao.saveBatch(convertToOperation(request, limitNamesMap));
         limitOperationsLoggingService.writeOperations(request, OperationState.HOLD);

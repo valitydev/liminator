@@ -1,10 +1,9 @@
 package com.empayre.liminator.dao.impl;
 
-import com.empayre.liminator.dao.AbstractDao;
 import com.empayre.liminator.dao.LimitDataDao;
 import com.empayre.liminator.domain.tables.pojos.LimitData;
-import com.empayre.liminator.exception.DaoException;
-import org.jooq.impl.DataSourceConnectionProvider;
+import lombok.RequiredArgsConstructor;
+import org.jooq.DSLContext;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -14,17 +13,16 @@ import java.util.List;
 import static com.empayre.liminator.domain.Tables.LIMIT_DATA;
 
 @Component
-public class LimitDataDaoImpl extends AbstractDao implements LimitDataDao {
+@RequiredArgsConstructor
+public class LimitDataDaoImpl implements LimitDataDao {
 
-    public LimitDataDaoImpl(DataSourceConnectionProvider dataSource) {
-        super(dataSource);
-    }
+    private final DSLContext dslContext;
 
     @Override
-    public Long save(LimitData limitData) throws DaoException {
-        return getDslContext()
+    public Long save(LimitData limitData) {
+        return dslContext
                 .insertInto(LIMIT_DATA)
-                .set(getDslContext().newRecord(LIMIT_DATA, limitData))
+                .set(dslContext.newRecord(LIMIT_DATA, limitData))
                 .onConflict(LIMIT_DATA.NAME)
                 .doUpdate()
                 .set(LIMIT_DATA.WTIME, LocalDateTime.now())
@@ -35,7 +33,7 @@ public class LimitDataDaoImpl extends AbstractDao implements LimitDataDao {
 
     @Override
     public LimitData get(String limitName) {
-        return getDslContext()
+        return dslContext
                 .selectFrom(LIMIT_DATA)
                 .where(LIMIT_DATA.NAME.equal(limitName))
                 .fetchOneInto(LimitData.class);
@@ -43,7 +41,7 @@ public class LimitDataDaoImpl extends AbstractDao implements LimitDataDao {
 
     @Override
     public List<LimitData> get(Collection<String> limitNames) {
-        return getDslContext()
+        return dslContext
                 .selectFrom(LIMIT_DATA)
                 .where(LIMIT_DATA.NAME.in(limitNames))
                 .fetchInto(LimitData.class);

@@ -1,7 +1,6 @@
 package com.empayre.liminator.service;
 
 import com.empayre.liminator.domain.enums.OperationState;
-import com.empayre.liminator.exception.DaoException;
 import com.empayre.liminator.handler.FinalizeOperationHandler;
 import com.empayre.liminator.handler.Handler;
 import com.empayre.liminator.handler.HoldOperationHandler;
@@ -9,6 +8,7 @@ import dev.vality.liminator.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.thrift.TException;
+import org.jooq.exception.DataAccessException;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
@@ -65,7 +65,7 @@ public class LiminatorService implements LiminatorServiceSrv.Iface {
             throws LimitNotFound, LimitsValuesReadingException, TException {
         try {
             return getLimitsValuesHandler.handle(request);
-        } catch (DaoException ex) {
+        } catch (DataAccessException ex) {
             log.error("[GET] Received DaoException for getting limits operation (request: {})", request, ex);
             throw new LimitsValuesReadingException();
         }
@@ -76,7 +76,7 @@ public class LiminatorService implements LiminatorServiceSrv.Iface {
             throws LimitNotFound, LimitsValuesReadingException, TException {
         try {
             return getLastLimitsValuesHandler.handle(limitNames);
-        } catch (DaoException ex) {
+        } catch (DataAccessException ex) {
             log.error("[GET] Received DaoException for getting last limits operation (limitNames: {})", limitNames, ex);
             throw new LimitsValuesReadingException();
         }

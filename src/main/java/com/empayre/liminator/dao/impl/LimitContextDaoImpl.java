@@ -1,26 +1,24 @@
 package com.empayre.liminator.dao.impl;
 
-import com.empayre.liminator.dao.AbstractDao;
 import com.empayre.liminator.dao.LimitContextDao;
 import com.empayre.liminator.domain.tables.pojos.LimitContext;
-import com.empayre.liminator.exception.DaoException;
-import org.jooq.impl.DataSourceConnectionProvider;
+import lombok.RequiredArgsConstructor;
+import org.jooq.DSLContext;
 import org.springframework.stereotype.Component;
 
 import static com.empayre.liminator.domain.Tables.LIMIT_CONTEXT;
 
 @Component
-public class LimitContextDaoImpl extends AbstractDao implements LimitContextDao {
+@RequiredArgsConstructor
+public class LimitContextDaoImpl implements LimitContextDao {
 
-    public LimitContextDaoImpl(DataSourceConnectionProvider dataSource) {
-        super(dataSource);
-    }
+    private final DSLContext dslContext;
 
     @Override
-    public Long save(LimitContext limitContext) throws DaoException {
-        return getDslContext()
+    public Long save(LimitContext limitContext) {
+        return dslContext
                 .insertInto(LIMIT_CONTEXT)
-                .set(getDslContext().newRecord(LIMIT_CONTEXT, limitContext))
+                .set(dslContext.newRecord(LIMIT_CONTEXT, limitContext))
                 .returning(LIMIT_CONTEXT.ID)
                 .fetchOne()
                 .getId();
@@ -28,7 +26,7 @@ public class LimitContextDaoImpl extends AbstractDao implements LimitContextDao 
 
     @Override
     public LimitContext getLimitContext(Long limitId) {
-        return getDslContext()
+        return dslContext
                 .selectFrom(LIMIT_CONTEXT)
                 .where(LIMIT_CONTEXT.LIMIT_ID.eq(limitId))
                 .fetchOneInto(LimitContext.class);
