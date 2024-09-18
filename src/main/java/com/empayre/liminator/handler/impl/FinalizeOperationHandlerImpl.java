@@ -73,7 +73,8 @@ public class FinalizeOperationHandlerImpl implements FinalizeOperationHandler {
         int changesSize = request.getLimitChanges().size();
         if (updatedRowsCount != changesSize) {
             log.error("[{}] Count of updated rows ({}) is not equal to the expected count of updated operations " +
-                            "(rollback size: {})", state.getLiteral(), updatedRowsCount, changesSize, request);
+                            "(rollback size: {}, request: {})",
+                    state.getLiteral(), updatedRowsCount, changesSize, request);
             throw new OperationNotFound();
         }
     }
