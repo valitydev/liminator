@@ -78,13 +78,12 @@ public class DaoTests {
         currentLimitValue.forEach(value -> assertEquals(0, value.getCommitValue()));
         currentLimitValue.forEach(value -> assertNotEquals(0, value.getHoldValue()));
 
-        List<String> commitLimitNames = limitNamesList.subList(0, 3);
+        List<Long> commitLimitIds = limitIdsList.subList(0, 3);
         String finalizeOperationName = operationNameTemplate.formatted(1);
-        operationDao.commit(commitLimitNames, finalizeOperationName);
+        operationDao.commit(finalizeOperationName, commitLimitIds);
 
-        List<String> rollbackLimitNames = limitNamesList.subList(4, 9);
-        operationDao.rollback(rollbackLimitNames, finalizeOperationName);
-
+        List<Long> rollbackLimitIds = limitIdsList.subList(4, 9);
+        operationDao.rollback(finalizeOperationName, rollbackLimitIds);
 
         List<LimitValue> limitValuesAfterChanges = operationDao.getCurrentLimitValue(limitNamesList);
         List<LimitValue> limitValuesWithCommitData = limitValuesAfterChanges.stream()

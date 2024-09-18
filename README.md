@@ -15,7 +15,7 @@
  - _LimitNotFound_ - данная ошибка будет даже если какого-то одного лимита из списка 
    переданных нет в БД
  - _DuplicateOperation_ - данная ошибка будет передана если для связки LimitName+OperationId в
-   БД уже имеется запись в значении HOLD
+   БД уже имеется запись в значении HOLD и флаг skipExistedHoldOps в настройках сервиса установлен в false
  - _OperationAlreadyInFinalState_ - данная ошибка будет передана если для связки LimitName+OperationId в
    БД уже имеется запись в значении COMMIT/ROLLBACK
  - _LimitsValuesReadingException_ - данная ошибка будет передана если при подсчете лимитов произошла 

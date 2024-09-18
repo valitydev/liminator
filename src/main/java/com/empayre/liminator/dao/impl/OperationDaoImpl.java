@@ -13,7 +13,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.empayre.liminator.domain.Tables.LIMIT_DATA;
 import static com.empayre.liminator.domain.Tables.OPERATION;
 import static org.jooq.impl.DSL.raw;
 import static org.jooq.impl.DSL.val;
@@ -80,26 +79,21 @@ public class OperationDaoImpl implements OperationDao {
     }
 
     @Override
-    public int commit(List<String> limitNames, String operationId) {
-        return updateStateForHoldOperation(limitNames, operationId, OperationState.COMMIT);
+    public int commit(String operationId, List<Long> limitIds) {
+        return updateStateForHoldOperation(operationId, OperationState.COMMIT, limitIds);
     }
 
     @Override
-    public int rollback(List<String> limitNames, String operationId) {
-        return updateStateForHoldOperation(limitNames, operationId, OperationState.ROLLBACK);
+    public int rollback(String operationId, List<Long> limitIds) {
+        return updateStateForHoldOperation(operationId, OperationState.ROLLBACK, limitIds);
     }
 
-    private int updateStateForHoldOperation(List<String> limitNames, String operationId, OperationState state) {
+    private int updateStateForHoldOperation(String operationId, OperationState state, List<Long> limitIds) {
         return dslContext
                 .update(OPERATION)
                 .set(OPERATION.STATE, state)
                 .where(OPERATION.OPERATION_ID.eq(operationId))
-                .and(OPERATION.LIMIT_ID.in(
-                        dslContext
-                                .select(LIMIT_DATA.ID)
-                                .from(LIMIT_DATA)
-                                .where(LIMIT_DATA.NAME.in(limitNames))
-                ))
+                .and(OPERATION.LIMIT_ID.in(limitIds))
                 .and(OPERATION.STATE.eq(OperationState.HOLD))
                 .execute();
     }

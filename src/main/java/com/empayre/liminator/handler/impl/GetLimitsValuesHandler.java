@@ -3,6 +3,7 @@ package com.empayre.liminator.handler.impl;
 import com.empayre.liminator.dao.OperationDao;
 import com.empayre.liminator.handler.Handler;
 import com.empayre.liminator.model.LimitValue;
+import dev.vality.liminator.LimitChange;
 import dev.vality.liminator.LimitRequest;
 import dev.vality.liminator.LimitResponse;
 import lombok.RequiredArgsConstructor;
@@ -25,8 +26,10 @@ public class GetLimitsValuesHandler implements Handler<LimitRequest, List<LimitR
     @Transactional
     @Override
     public List<LimitResponse> handle(LimitRequest request) throws TException {
-        List<LimitValue> limitValues =
-                operationDao.getCurrentLimitValue(request.getLimitNames(), request.getOperationId());
+        List<String> limitNames = request.getLimitChanges().stream()
+                .map(LimitChange::getLimitName)
+                .toList();
+        List<LimitValue> limitValues = operationDao.getCurrentLimitValue(limitNames, request.getOperationId());
         return currentLimitValuesToLimitResponseConverter.convert(limitValues);
     }
 }

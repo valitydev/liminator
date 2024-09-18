@@ -32,14 +32,16 @@ public class FinalizeOperationHandlerImpl implements FinalizeOperationHandler {
     public void handle(LimitRequest request, OperationState state) throws TException {
         List<LimitData> limitData = limitDataGettingService.get(request, state.getLiteral());
         checkExistedHoldOperations(request, limitData, state);
-
+        List<Long> limitIds = limitData.stream()
+                .map(LimitData::getId)
+                .toList();
         int updatedRowsCount = switch (state) {
-            case COMMIT -> operationDao.commit(request.getLimitNames(), request.getOperationId());
-            case ROLLBACK -> operationDao.rollback(request.getLimitNames(), request.getOperationId());
+            case COMMIT -> operationDao.commit(request.getOperationId(), limitIds);
+            case ROLLBACK -> operationDao.rollback(request.getOperationId(), limitIds);
             default -> throw new TException();
         };
 
-        checkUpdatedOperstionsConsistency(request, state, updatedRowsCount);
+        checkUpdatedOperationsConsistency(request, state, updatedRowsCount);
         limitOperationsLoggingService.writeOperations(request, state);
     }
 
@@ -65,14 +67,13 @@ public class FinalizeOperationHandlerImpl implements FinalizeOperationHandler {
         }
     }
 
-    private void checkUpdatedOperstionsConsistency(LimitRequest request,
+    private void checkUpdatedOperationsConsistency(LimitRequest request,
                                                    OperationState state,
                                                    int updatedRowsCount) throws TException {
-        List<String> limitNames = request.getLimitNames();
-        if (updatedRowsCount != limitNames.size()) {
+        int changesSize = request.getLimitChanges().size();
+        if (updatedRowsCount != changesSize) {
             log.error("[{}] Count of updated rows ({}) is not equal to the expected count of updated operations " +
-                            "(rollback size: {})",
-                    state.getLiteral(), updatedRowsCount, limitNames.size(), request);
+                            "(rollback size: {})", state.getLiteral(), updatedRowsCount, changesSize, request);
             throw new OperationNotFound();
         }
     }

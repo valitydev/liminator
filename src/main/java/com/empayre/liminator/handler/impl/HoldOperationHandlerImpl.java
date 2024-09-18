@@ -55,8 +55,13 @@ public class HoldOperationHandlerImpl implements HoldOperationHandler {
     }
 
     private List<Operation> convertToOperation(LimitRequest request, Map<String, Long> limitNamesMap) {
-        return request.getLimitNames().stream()
-                .map(limitName -> operationConverter.convert(request, limitNamesMap.get(limitName)))
+        return request.getLimitChanges().stream()
+                .map(change -> operationConverter.convert(
+                                request,
+                                limitNamesMap.get(change.getLimitName()),
+                                change.getValue()
+                        )
+                )
                 .toList();
     }
 
@@ -69,7 +74,8 @@ public class HoldOperationHandlerImpl implements HoldOperationHandler {
         }
     }
 
-    private void checkExistedFinalizeOperations(Map<String, Long> limitNamesMap, String operationId) throws TException {
+    private void checkExistedFinalizeOperations(Map<String, Long> limitNamesMap,
+                                                String operationId) throws TException {
         List<Operation> existedFinalizeOperations = operationDao.get(
                 operationId,
                 limitNamesMap.values(),
