@@ -13,12 +13,12 @@ public class OperationStateHistoryConverterImpl implements OperationStateHistory
 
     @Override
     public List<OperationStateHistory> convert(LimitRequest request, OperationState state) {
-        return request.getLimitNames().stream()
-                .map(limitName -> {
+        return request.getLimitChanges().stream()
+                .map(change -> {
                     OperationStateHistory history = new OperationStateHistory();
                     history.setOperationId(request.getOperationId());
-                    history.setLimitName(limitName);
-                    history.setOperationValue(request.getValue());
+                    history.setLimitName(change.getLimitName());
+                    history.setOperationValue(change.getValue());
                     history.setState(state);
                     return history;
                 })

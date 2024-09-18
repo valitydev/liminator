@@ -21,7 +21,7 @@ public interface OperationDao extends CommonDao<Operation> {
 
     List<LimitValue> getCurrentLimitValue(List<String> limitNames, String operationId);
 
-    int commit(List<String> limitNames, String operationId);
+    int commit(String operationId, List<Long> limitIds);
 
-    int rollback(List<String> limitNames, String operationId);
+    int rollback(String operationId, List<Long> limitIds);
 }

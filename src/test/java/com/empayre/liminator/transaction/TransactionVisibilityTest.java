@@ -3,6 +3,7 @@ package com.empayre.liminator.transaction;
 import com.empayre.liminator.dao.OperationStateHistoryDao;
 import com.empayre.liminator.service.LiminatorService;
 import dev.vality.liminator.CreateLimitRequest;
+import dev.vality.liminator.LimitChange;
 import dev.vality.liminator.LimitRequest;
 import dev.vality.liminator.LimitResponse;
 import org.apache.thrift.TException;
@@ -42,8 +43,7 @@ public class TransactionVisibilityTest extends AbstractIntegrationTestWithEmbedd
         String operationId = "OpComit123";
         LimitRequest holdRequest = new LimitRequest()
                 .setOperationId(operationId)
-                .setLimitNames(List.of(limitName))
-                .setValue(500L);
+                .setLimitChanges(List.of(new LimitChange(limitName, 500L)));
 
         assertThrows(RuntimeException.class, () -> liminatorService.hold(holdRequest));
 

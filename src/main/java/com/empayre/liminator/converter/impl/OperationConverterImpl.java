@@ -12,11 +12,11 @@ import java.time.LocalDateTime;
 public class OperationConverterImpl implements OperationConverter {
 
     @Override
-    public Operation convert(LimitRequest request, Long limitId) {
+    public Operation convert(LimitRequest request, Long limitId, Long limitValue) {
         Operation operation = new Operation();
         operation.setLimitId(limitId);
         operation.setOperationId(request.getOperationId());
-        operation.setOperationValue(request.getValue());
+        operation.setOperationValue(limitValue);
         operation.setCreatedAt(LocalDateTime.now());
         operation.setState(OperationState.HOLD);
         return operation;

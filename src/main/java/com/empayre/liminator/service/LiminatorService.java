@@ -34,7 +34,7 @@ public class LiminatorService implements LiminatorServiceSrv.Iface {
     @Override
     public List<LimitResponse> hold(LimitRequest request)
             throws LimitNotFound, DuplicateOperation, OperationAlreadyInFinalState, TException {
-        if (request == null || CollectionUtils.isEmpty(request.getLimitNames())) {
+        if (request == null || CollectionUtils.isEmpty(request.getLimitChanges())) {
             log.warn("[HOLD] LimitRequest or LimitNames is empty. Request: {}", request);
             return new ArrayList<>();
         }

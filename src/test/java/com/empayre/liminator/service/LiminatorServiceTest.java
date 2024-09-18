@@ -2,6 +2,7 @@ package com.empayre.liminator.service;
 
 import com.empayre.liminator.config.PostgresqlSpringBootITest;
 import dev.vality.liminator.CreateLimitRequest;
+import dev.vality.liminator.LimitChange;
 import dev.vality.liminator.LimitRequest;
 import dev.vality.liminator.LimitResponse;
 import org.apache.thrift.TException;
@@ -40,8 +41,7 @@ public class LiminatorServiceTest {
         String operationId = "OpHold";
         LimitRequest holdRequest = new LimitRequest()
                 .setOperationId(operationId)
-                .setLimitNames(List.of(limitName))
-                .setValue(500L);
+                .setLimitChanges(List.of(new LimitChange(limitName, 500L)));
         List<LimitResponse> holdResponse = liminatorService.hold(holdRequest);
         assertEquals(1, holdResponse.size());
         LimitResponse response = holdResponse.get(0);
@@ -60,8 +60,7 @@ public class LiminatorServiceTest {
         String operationId = "OpComit";
         LimitRequest holdRequest = new LimitRequest()
                 .setOperationId(operationId)
-                .setLimitNames(List.of(limitName))
-                .setValue(500L);
+                .setLimitChanges(List.of(new LimitChange(limitName, 500L)));
         liminatorService.hold(holdRequest);
         liminatorService.commit(holdRequest);
 
@@ -82,8 +81,7 @@ public class LiminatorServiceTest {
         String operationId = "Op-112";
         LimitRequest holdRequest = new LimitRequest()
                 .setOperationId(operationId)
-                .setLimitNames(List.of(limitName))
-                .setValue(500L);
+                .setLimitChanges(List.of(new LimitChange(limitName, 500L)));
         liminatorService.hold(holdRequest);
         liminatorService.rollback(holdRequest);
 
