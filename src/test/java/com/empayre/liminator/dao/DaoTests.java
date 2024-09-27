@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @Slf4j
 @PostgresqlSpringBootITest
-public class DaoTests {
+class DaoTests {
 
     @Autowired
     private LimitDataDao limitDataDao;
@@ -31,11 +31,12 @@ public class DaoTests {
     private OperationDao operationDao;
 
     @Test
-    public void limitDataDaoTest() {
+    void limitDataDaoTest() {
         List<String> limitNames = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
             String limitName = "Limit-" + i;
-            limitDataDao.save(new LimitData(null, limitName, LocalDate.now(), LocalDateTime.now()));
+            String limitId = "limit-id-" + i;
+            limitDataDao.save(new LimitData(null, limitName, LocalDate.now(), LocalDateTime.now(), limitId));
             limitNames.add(limitName);
         }
 
@@ -44,10 +45,10 @@ public class DaoTests {
     }
 
     @Test
-    public void limitContextDaoTest() {
+    void limitContextDaoTest() {
         LimitContext limitContext = new LimitContext();
         long limitId = 123L;
-        limitContext.setLimitId(limitId);
+        limitContext.setLimitDataId(limitId);
         limitContext.setContext("{\"provider\":\"test\"}");
         limitContextDao.save(limitContext);
         LimitContext result = limitContextDao.getLimitContext(limitId);
@@ -55,13 +56,14 @@ public class DaoTests {
     }
 
     @Test
-    public void operationDaoTest() {
+    void operationDaoTest() {
         List<Long> limitIdsList = new ArrayList<>();
         List<String> limitNamesList = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
             String limitName = "Limit-odc-1-" + i;
-            Long limitId = limitDataDao.save(new LimitData(null, limitName, LocalDate.now(), LocalDateTime.now()));
-            limitIdsList.add(limitId);
+            String limitId = "Limit-id-odc-1-" + i;
+            Long id = limitDataDao.save(new LimitData(null, limitName, LocalDate.now(), LocalDateTime.now(), limitId));
+            limitIdsList.add(id);
             limitNamesList.add(limitName);
         }
         List<Operation> operations = new ArrayList<>();
@@ -103,14 +105,15 @@ public class DaoTests {
     }
 
     @Test
-    public void operationDaoCurrentLimitWithOperationIdTest() {
+    void operationDaoCurrentLimitWithOperationIdTest() {
         String limitName = "Limit-odc-2";
-        Long limitId = limitDataDao.save(new LimitData(null, limitName, LocalDate.now(), LocalDateTime.now()));
+        String limitId = "Limit-id-odc-2";
+        Long id = limitDataDao.save(new LimitData(null, limitName, LocalDate.now(), LocalDateTime.now(), limitId));
         List<Operation> operations = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
             Operation operation = createOperation(
-                    limitId,
-                    "Operation-odc-2-%s-%s".formatted(limitId, i),
+                    id,
+                    "Operation-odc-2-%s-%s".formatted(id, i),
                     LocalDateTime.now().minusMinutes(11L - i));
             operationDao.save(operation);
             operations.add(operation);

@@ -1,7 +1,7 @@
 package com.empayre.liminator.converter;
 
 import com.empayre.liminator.domain.tables.pojos.LimitData;
-import dev.vality.liminator.CreateLimitRequest;
+import dev.vality.liminator.LimitChange;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.stereotype.Component;
 
@@ -9,12 +9,13 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Component
-public class CreateLimitRequestToLimitDataConverter implements Converter<CreateLimitRequest, LimitData> {
+public class LimitChangeToLimitDataConverter implements Converter<LimitChange, LimitData> {
 
     @Override
-    public LimitData convert(CreateLimitRequest request) {
+    public LimitData convert(LimitChange change) {
         LimitData data = new LimitData();
-        data.setName(request.getLimitName());
+        data.setName(change.getLimitName());
+        data.setLimitId(change.getLimitId());
         data.setCreatedAt(LocalDate.now());
         data.setWtime(LocalDateTime.now());
         return data;

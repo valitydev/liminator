@@ -7,6 +7,7 @@ import lombok.Data;
 @AllArgsConstructor
 public class LimitValue {
 
+    private String limitId;
     private String limitName;
     private Long commitValue;
     private Long holdValue;

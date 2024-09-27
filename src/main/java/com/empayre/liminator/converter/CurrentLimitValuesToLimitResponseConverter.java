@@ -24,6 +24,7 @@ public class CurrentLimitValuesToLimitResponseConverter implements Converter<Lis
                         limitValue.getLimitName(),
                         limitValue.getCommitValue(),
                         limitValue.getHoldValue())
+                        .setLimitId(limitValue.getLimitId())
                 )
                 .toList();
     }

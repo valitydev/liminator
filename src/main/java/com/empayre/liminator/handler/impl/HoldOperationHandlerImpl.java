@@ -6,10 +6,10 @@ import com.empayre.liminator.domain.enums.OperationState;
 import com.empayre.liminator.domain.tables.pojos.LimitData;
 import com.empayre.liminator.domain.tables.pojos.Operation;
 import com.empayre.liminator.handler.HoldOperationHandler;
-import com.empayre.liminator.service.LimitDataGettingService;
+import com.empayre.liminator.service.LimitDataService;
 import com.empayre.liminator.service.LimitOperationsLoggingService;
-import com.empayre.liminator.util.LimitDataUtils;
 import dev.vality.liminator.DuplicateOperation;
+import dev.vality.liminator.LimitChange;
 import dev.vality.liminator.LimitRequest;
 import dev.vality.liminator.OperationAlreadyInFinalState;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +20,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -30,9 +31,9 @@ import java.util.Map;
 public class HoldOperationHandlerImpl implements HoldOperationHandler {
 
     private final OperationDao operationDao;
-    private final LimitDataGettingService limitDataGettingService;
     private final OperationConverter operationConverter;
     private final LimitOperationsLoggingService limitOperationsLoggingService;
+    private final LimitDataService limitDataService;
 
     @Value("${service.skipExistedHoldOps}")
     private boolean skipExistedHoldOps;
@@ -42,8 +43,17 @@ public class HoldOperationHandlerImpl implements HoldOperationHandler {
     @Transactional
     @Override
     public void handle(LimitRequest request) throws TException {
-        List<LimitData> limitData = limitDataGettingService.get(request, LOG_PREFIX);
-        Map<String, Long> limitNamesMap = LimitDataUtils.createLimitNamesMap(limitData);
+        var limitNamesMap = new HashMap<String, Long>();
+        List<LimitChange> limitChanges = request.getLimitChanges();
+        for (LimitChange change : limitChanges) {
+            LimitData limitData = limitDataService.get(change.getLimitName());
+            if (limitData != null) {
+                limitNamesMap.put(limitData.getName(), limitData.getId());
+            } else {
+                var limitId = limitDataService.save(change);
+                limitNamesMap.put(change.getLimitName(), limitId);
+            }
+        }
 
         checkExistedFinalizeOperations(limitNamesMap, request.getOperationId());
         if (!skipExistedHoldOps) {

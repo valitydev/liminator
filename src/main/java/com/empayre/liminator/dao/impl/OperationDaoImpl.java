@@ -102,14 +102,14 @@ public class OperationDaoImpl implements OperationDao {
     public List<LimitValue> getCurrentLimitValue(List<String> limitNames) {
         String sql = """
                 with hold_data as (
-                    select ld.id, ld.name, coalesce(sum(ops.operation_value), 0) as hold_value
+                    select ld.id, ld.name, ld.limit_id, coalesce(sum(ops.operation_value), 0) as hold_value
                     from lim.limit_data as ld
                     left join lim.operation as ops
                       on ops.limit_id = ld.id and ops.state = 'HOLD'
                     where ld.name in ({0})
                     group by ld.id, ld.name
                 ), commit_data as (
-                    select ld.id, ld.name, coalesce(sum(ops.operation_value), 0) as commit_value
+                    select ld.id, ld.name, ld.limit_id, coalesce(sum(ops.operation_value), 0) as commit_value
                     from lim.limit_data as ld
                     left join lim.operation as ops
                       on ops.limit_id = ld.id and ops.state = 'COMMIT'
@@ -117,7 +117,7 @@ public class OperationDaoImpl implements OperationDao {
                     group by ld.id, ld.name
                 )
                                 
-                select cd.name as limit_name, cd.commit_value, hd.hold_value
+                select cd.limit_id as limit_id, cd.name as limit_name, cd.commit_value, hd.hold_value
                 from commit_data as cd
                 join hold_data as hd on cd.id = hd.id;
                 """;
@@ -134,7 +134,7 @@ public class OperationDaoImpl implements OperationDao {
                     from lim.operation
                     where operation_id = {0}
                 ), hold_data as (
-                    select ld.id, ld.name, coalesce(sum(ops.operation_value), 0) as hold_value
+                    select ld.id, ld.name, ld.limit_id, coalesce(sum(ops.operation_value), 0) as hold_value
                     from lim.limit_data as ld
                     left join lim.operation as ops
                       on ops.limit_id = ld.id
@@ -143,7 +143,7 @@ public class OperationDaoImpl implements OperationDao {
                     where ld.name in ({1})
                     group by ld.id, ld.name
                 ), commit_data as (
-                    select ld.id, ld.name, coalesce(sum(ops.operation_value), 0) as commit_value
+                    select ld.id, ld.name, ld.limit_id, coalesce(sum(ops.operation_value), 0) as commit_value
                     from lim.limit_data as ld
                     left join lim.operation as ops
                       on ops.limit_id = ld.id
@@ -153,7 +153,7 @@ public class OperationDaoImpl implements OperationDao {
                     group by ld.id, ld.name
                 )
                                 
-                select cd.name as limit_name, cd.commit_value, hd.hold_value
+                select cd.limit_id as limit_id, cd.name as limit_name, cd.commit_value, hd.hold_value
                 from commit_data as cd
                 join hold_data as hd on cd.id = hd.id;
                 """;
