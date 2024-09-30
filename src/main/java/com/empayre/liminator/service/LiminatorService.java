@@ -20,16 +20,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class LiminatorService implements LiminatorServiceSrv.Iface {
 
-    private final Handler<CreateLimitRequest, LimitResponse> createLimitHandler;
     private final HoldOperationHandler holdOperationHandler;
     private final FinalizeOperationHandler finalizeOperationHandler;
     private final Handler<LimitRequest, List<LimitResponse>> getLimitsValuesHandler;
     private final Handler<List<String>, List<LimitResponse>> getLastLimitsValuesHandler;
 
-    @Override
-    public LimitResponse create(CreateLimitRequest createLimitRequest) throws DuplicateLimitName, TException {
-        return createLimitHandler.handle(createLimitRequest);
-    }
 
     @Override
     public List<LimitResponse> hold(LimitRequest request)

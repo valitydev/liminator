@@ -5,7 +5,7 @@ import com.empayre.liminator.domain.enums.OperationState;
 import com.empayre.liminator.domain.tables.pojos.LimitData;
 import com.empayre.liminator.domain.tables.pojos.Operation;
 import com.empayre.liminator.handler.FinalizeOperationHandler;
-import com.empayre.liminator.service.LimitDataGettingService;
+import com.empayre.liminator.service.LimitDataService;
 import com.empayre.liminator.service.LimitOperationsLoggingService;
 import dev.vality.liminator.LimitRequest;
 import dev.vality.liminator.OperationNotFound;
@@ -24,13 +24,13 @@ import java.util.List;
 public class FinalizeOperationHandlerImpl implements FinalizeOperationHandler {
 
     private final OperationDao operationDao;
-    private final LimitDataGettingService limitDataGettingService;
+    private final LimitDataService limitDataService;
     private final LimitOperationsLoggingService limitOperationsLoggingService;
 
     @Transactional
     @Override
     public void handle(LimitRequest request, OperationState state) throws TException {
-        List<LimitData> limitData = limitDataGettingService.get(request, state.getLiteral());
+        List<LimitData> limitData = limitDataService.get(request, state.getLiteral());
         checkExistedHoldOperations(request, limitData, state);
         List<Long> limitIds = limitData.stream()
                 .map(LimitData::getId)

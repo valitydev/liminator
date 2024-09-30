@@ -28,7 +28,7 @@ public class LimitContextDaoImpl implements LimitContextDao {
     public LimitContext getLimitContext(Long limitId) {
         return dslContext
                 .selectFrom(LIMIT_CONTEXT)
-                .where(LIMIT_CONTEXT.LIMIT_ID.eq(limitId))
+                .where(LIMIT_CONTEXT.LIMIT_DATA_ID.eq(limitId))
                 .fetchOneInto(LimitContext.class);
     }
 }
