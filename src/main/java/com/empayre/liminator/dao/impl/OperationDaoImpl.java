@@ -117,7 +117,7 @@ public class OperationDaoImpl implements OperationDao {
                     group by ld.id, ld.name
                 )
                                 
-                select cd.limit_id as limit_id, cd.name as limit_name, cd.commit_value, hd.hold_value
+                select cd.limit_id, cd.name as limit_name, cd.commit_value, hd.hold_value
                 from commit_data as cd
                 join hold_data as hd on cd.id = hd.id;
                 """;
@@ -153,7 +153,7 @@ public class OperationDaoImpl implements OperationDao {
                     group by ld.id, ld.name
                 )
                                 
-                select cd.limit_id as limit_id, cd.name as limit_name, cd.commit_value, hd.hold_value
+                select cd.limit_id, cd.name as limit_name, cd.commit_value, hd.hold_value
                 from commit_data as cd
                 join hold_data as hd on cd.id = hd.id;
                 """;

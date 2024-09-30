@@ -45,15 +45,13 @@ class LiminatorServiceTest {
     @Test
     void holdValueTest() throws TException {
         String limitName = "TestLimitHold";
-//        CreateLimitRequest createRequest = new CreateLimitRequest()
-//                .setLimitName(limitName);
-//        liminatorService.create(createRequest);
-
         String operationId = "OpHold";
         LimitRequest holdRequest = new LimitRequest()
                 .setOperationId(operationId)
                 .setLimitChanges(List.of(new LimitChange(limitName, 500L)));
+
         List<LimitResponse> holdResponse = liminatorService.hold(holdRequest);
+
         assertEquals(1, holdResponse.size());
         LimitResponse response = holdResponse.get(0);
         assertEquals(500, response.getHoldValue());
@@ -64,10 +62,6 @@ class LiminatorServiceTest {
     @Test
     void commitValueTest() throws TException {
         String limitName = "TestLimitCommit";
-//        CreateLimitRequest createRequest = new CreateLimitRequest()
-//                .setLimitName(limitName);
-//        liminatorService.create(createRequest);
-
         String operationId = "OpComit";
         LimitRequest holdRequest = new LimitRequest()
                 .setOperationId(operationId)
@@ -76,6 +70,7 @@ class LiminatorServiceTest {
         liminatorService.commit(holdRequest);
 
         List<LimitResponse> limitResponses = liminatorService.getLastLimitsValues(List.of(limitName));
+
         assertEquals(1, limitResponses.size());
         assertEquals(0, limitResponses.get(0).getHoldValue());
         assertEquals(500, limitResponses.get(0).getCommitValue());
@@ -85,10 +80,6 @@ class LiminatorServiceTest {
     @Test
     void rollbackValueTest() throws TException {
         String limitName = "TestLimitRollback";
-//        CreateLimitRequest createRequest = new CreateLimitRequest()
-//                .setLimitName(limitName);
-//        liminatorService.create(createRequest);
-
         String operationId = "Op-112";
         LimitRequest holdRequest = new LimitRequest()
                 .setOperationId(operationId)
@@ -97,6 +88,7 @@ class LiminatorServiceTest {
         liminatorService.rollback(holdRequest);
 
         List<LimitResponse> limitResponses = liminatorService.getLastLimitsValues(List.of(limitName));
+
         assertEquals(1, limitResponses.size());
         assertEquals(0, limitResponses.get(0).getHoldValue());
         assertEquals(0, limitResponses.get(0).getCommitValue());
