@@ -60,6 +60,38 @@ class LiminatorServiceTest {
     }
 
     @Test
+    void holdFewValueTest() throws TException {
+        String limitNameFirst = "TestLimitHold";
+        String limitNameSecond = "TestLimitHold2";
+        String operationId = "OpHold";
+        LimitRequest holdRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(
+                        new LimitChange(limitNameFirst, 500L),
+                        new LimitChange(limitNameSecond, 500L))
+                );
+
+        List<LimitResponse> holdResponse = liminatorService.hold(holdRequest);
+
+        assertEquals(2, holdResponse.size());
+        LimitResponse limitResponseFirst = holdResponse.stream()
+                .filter(limitResponse -> limitResponse.getLimitName().equals(limitNameFirst))
+                .findFirst()
+                .get();
+        assertEquals(500, limitResponseFirst.getHoldValue());
+        assertEquals(0, limitResponseFirst.getCommitValue());
+        assertEquals(limitNameFirst, limitResponseFirst.getLimitName());
+        LimitResponse limitResponseSecond = holdResponse.stream()
+                .filter(limitResponse -> limitResponse.getLimitName().equals(limitNameSecond))
+                .findFirst()
+                .get();
+        assertEquals(500, limitResponseSecond.getHoldValue());
+        assertEquals(0, limitResponseSecond.getCommitValue());
+        assertEquals(limitNameSecond, limitResponseSecond.getLimitName());
+
+    }
+
+    @Test
     void commitValueTest() throws TException {
         String limitName = "TestLimitCommit";
         String operationId = "OpComit";

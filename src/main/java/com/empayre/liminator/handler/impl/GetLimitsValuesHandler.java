@@ -13,6 +13,7 @@ import org.springframework.core.convert.converter.Converter;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Slf4j
@@ -30,6 +31,7 @@ public class GetLimitsValuesHandler implements Handler<LimitRequest, List<LimitR
                 .map(LimitChange::getLimitName)
                 .toList();
         List<LimitValue> limitValues = operationDao.getCurrentLimitValue(limitNames, request.getOperationId());
+        log.debug("Success get limits: {}", Arrays.toString(limitValues.toArray()));
         return currentLimitValuesToLimitResponseConverter.convert(limitValues);
     }
 }

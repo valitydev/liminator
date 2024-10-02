@@ -20,6 +20,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
+import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,22 +56,25 @@ public class HoldOperationHandlerImpl implements HoldOperationHandler {
                 limitNamesMap.put(change.getLimitName(), limitId);
             }
         }
-
-        checkExistedFinalizeOperations(limitNamesMap, request.getOperationId());
+        String operationId = request.getOperationId();
+        checkExistedFinalizeOperations(limitNamesMap, operationId);
         if (!skipExistedHoldOps) {
-            checkExistedHoldOperations(limitNamesMap, request.getOperationId());
+            log.debug("Skip check existed hold operation for operationId: {}", operationId);
+            checkExistedHoldOperations(limitNamesMap, operationId);
         }
-
+        log.info("Save operation: {} with limits: {}", operationId, Arrays.toString(limitNamesMap.keySet().toArray()));
         operationDao.saveBatch(convertToOperation(request, limitNamesMap));
         limitOperationsLoggingService.writeOperations(request, OperationState.HOLD);
     }
 
     private List<Operation> convertToOperation(LimitRequest request, Map<String, Long> limitNamesMap) {
+        var createdAt = LocalDateTime.now();
         return request.getLimitChanges().stream()
                 .map(change -> operationConverter.convert(
                                 request,
                                 limitNamesMap.get(change.getLimitName()),
-                                change.getValue()
+                                change.getValue(),
+                                createdAt
                         )
                 )
                 .toList();

@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @Slf4j
@@ -33,6 +34,7 @@ public class LiminatorService implements LiminatorServiceSrv.Iface {
             log.warn("[HOLD] LimitRequest or LimitNames is empty. Request: {}", request);
             return new ArrayList<>();
         }
+        log.info("Start hold operation with request: {}", request);
         holdOperationHandler.handle(request);
         return get(request);
     }
@@ -40,6 +42,7 @@ public class LiminatorService implements LiminatorServiceSrv.Iface {
     @Override
     public void commit(LimitRequest request) throws LimitNotFound, OperationNotFound, TException {
         try {
+            log.info("Start commit operation with request: {}", request);
             finalizeOperationHandler.handle(request, OperationState.COMMIT);
         } catch (Exception ex) {
             log.error("Commit execution exception. Request: {}", request, ex);
@@ -49,6 +52,7 @@ public class LiminatorService implements LiminatorServiceSrv.Iface {
     @Override
     public void rollback(LimitRequest request) throws LimitNotFound, OperationNotFound, TException {
         try {
+            log.info("Start rollback operation with request: {}", request);
             finalizeOperationHandler.handle(request, OperationState.ROLLBACK);
         } catch (Exception ex) {
             log.error("Rollback execution exception. Request: {}", request, ex);
@@ -59,6 +63,7 @@ public class LiminatorService implements LiminatorServiceSrv.Iface {
     public List<LimitResponse> get(LimitRequest request)
             throws LimitNotFound, LimitsValuesReadingException, TException {
         try {
+            log.info("Get limits with request: {}", request);
             return getLimitsValuesHandler.handle(request);
         } catch (DataAccessException ex) {
             log.error("[GET] Received DaoException for getting limits operation (request: {})", request, ex);
@@ -70,6 +75,7 @@ public class LiminatorService implements LiminatorServiceSrv.Iface {
     public List<LimitResponse> getLastLimitsValues(List<String> limitNames)
             throws LimitNotFound, LimitsValuesReadingException, TException {
         try {
+            log.info("Get last limits for limits: {}", Arrays.toString(limitNames.toArray()));
             return getLastLimitsValuesHandler.handle(limitNames);
         } catch (DataAccessException ex) {
             log.error("[GET] Received DaoException for getting last limits operation (limitNames: {})", limitNames, ex);

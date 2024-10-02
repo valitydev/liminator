@@ -11,6 +11,7 @@ import org.springframework.core.convert.converter.Converter;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Slf4j
@@ -25,6 +26,7 @@ public class GetLastLimitsValuesHandler implements Handler<List<String>, List<Li
     @Override
     public List<LimitResponse> handle(List<String> limitIdNames) throws TException {
         List<LimitValue> currentLimitValues = operationDao.getCurrentLimitValue(limitIdNames);
+        log.debug("Success get last limits: {}", Arrays.toString(currentLimitValues.toArray()));
         return currentLimitValuesToLimitResponseConverter.convert(currentLimitValues);
     }
 }
