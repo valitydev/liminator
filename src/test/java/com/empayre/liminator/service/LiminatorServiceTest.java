@@ -88,7 +88,6 @@ class LiminatorServiceTest {
         assertEquals(500, limitResponseSecond.getHoldValue());
         assertEquals(0, limitResponseSecond.getCommitValue());
         assertEquals(limitNameSecond, limitResponseSecond.getLimitName());
-
     }
 
     @Test
