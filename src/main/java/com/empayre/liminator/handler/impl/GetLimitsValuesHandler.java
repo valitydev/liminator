@@ -1,8 +1,8 @@
 package com.empayre.liminator.handler.impl;
 
-import com.empayre.liminator.dao.OperationDao;
 import com.empayre.liminator.handler.Handler;
 import com.empayre.liminator.model.LimitValue;
+import com.empayre.liminator.service.LimitOperationsHistoryService;
 import dev.vality.liminator.LimitChange;
 import dev.vality.liminator.LimitRequest;
 import dev.vality.liminator.LimitResponse;
@@ -21,7 +21,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class GetLimitsValuesHandler implements Handler<LimitRequest, List<LimitResponse>> {
 
-    private final OperationDao operationDao;
+    private final LimitOperationsHistoryService limitOperationsHistoryService;
     private final Converter<List<LimitValue>, List<LimitResponse>> currentLimitValuesToLimitResponseConverter;
 
     @Transactional
@@ -30,7 +30,8 @@ public class GetLimitsValuesHandler implements Handler<LimitRequest, List<LimitR
         List<String> limitNames = request.getLimitChanges().stream()
                 .map(LimitChange::getLimitName)
                 .toList();
-        List<LimitValue> limitValues = operationDao.getCurrentLimitValue(limitNames, request.getOperationId());
+        String operationId = request.getOperationId();
+        List<LimitValue> limitValues = limitOperationsHistoryService.getCurrentLimitValue(limitNames, operationId);
         log.debug("Success get limits: {}", Arrays.toString(limitValues.toArray()));
         return currentLimitValuesToLimitResponseConverter.convert(limitValues);
     }

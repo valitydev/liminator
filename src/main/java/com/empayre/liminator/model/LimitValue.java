@@ -11,4 +11,5 @@ public class LimitValue {
     private String limitName;
     private Long commitValue;
     private Long holdValue;
+    private Long rollbackValue;
 }

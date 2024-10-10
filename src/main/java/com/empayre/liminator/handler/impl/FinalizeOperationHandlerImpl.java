@@ -1,12 +1,10 @@
 package com.empayre.liminator.handler.impl;
 
-import com.empayre.liminator.dao.OperationDao;
 import com.empayre.liminator.domain.enums.OperationState;
 import com.empayre.liminator.domain.tables.pojos.LimitData;
-import com.empayre.liminator.domain.tables.pojos.Operation;
 import com.empayre.liminator.handler.FinalizeOperationHandler;
 import com.empayre.liminator.service.LimitDataService;
-import com.empayre.liminator.service.LimitOperationsLoggingService;
+import com.empayre.liminator.service.LimitOperationsHistoryService;
 import dev.vality.liminator.LimitRequest;
 import dev.vality.liminator.OperationNotFound;
 import lombok.RequiredArgsConstructor;
@@ -14,57 +12,41 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.thrift.TException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.CollectionUtils;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import static com.empayre.liminator.domain.enums.OperationState.COMMIT;
+import static com.empayre.liminator.domain.enums.OperationState.ROLLBACK;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class FinalizeOperationHandlerImpl implements FinalizeOperationHandler {
 
-    private final OperationDao operationDao;
     private final LimitDataService limitDataService;
-    private final LimitOperationsLoggingService limitOperationsLoggingService;
+    private final LimitOperationsHistoryService limitOperationsHistoryService;
 
     @Transactional
     @Override
     public void handle(LimitRequest request, OperationState state) throws TException {
-        List<LimitData> limitData = limitDataService.get(request, state.getLiteral());
-        checkExistedHoldOperations(request, limitData, state);
-        List<Long> limitIds = limitData.stream()
-                .map(LimitData::getId)
-                .toList();
-        int updatedRowsCount = switch (state) {
-            case COMMIT -> operationDao.commit(request.getOperationId(), limitIds);
-            case ROLLBACK -> operationDao.rollback(request.getOperationId(), limitIds);
-            default -> throw new TException();
-        };
-
-        checkUpdatedOperationsConsistency(request, state, updatedRowsCount);
-        limitOperationsLoggingService.writeOperations(request, state);
+        Map<String, Long> limitNamesMap = getLimitDataMap(request, state.getLiteral());
+        limitOperationsHistoryService.checkExistedHoldOperations(request, limitNamesMap.values(), state);
+        if (!List.of(COMMIT, ROLLBACK).contains(state)) {
+            throw new TException();
+        }
+        int[] counts = limitOperationsHistoryService.writeOperations(request, state, limitNamesMap);
+        checkUpdatedOperationsConsistency(request, state, counts.length);
     }
 
-    private void checkExistedHoldOperations(LimitRequest request,
-                                            List<LimitData> limitData,
-                                            OperationState state) throws TException {
-        String logPrefix = state.getLiteral();
-        String operationId = request.getOperationId();
-        List<Long> limitIds = limitData.stream()
-                .map(LimitData::getId)
-                .toList();
-        List<Operation> existedHoldOperations = operationDao.get(operationId, limitIds, List.of(OperationState.HOLD));
-        if (CollectionUtils.isEmpty(existedHoldOperations)) {
-            log.error("[{}] Existed hold operations with ID {} not found: {} (request: {})",
-                    logPrefix, operationId, existedHoldOperations, request);
-            throw new OperationNotFound();
+    private HashMap<String, Long> getLimitDataMap(LimitRequest request, String source) throws TException {
+        var limitNamesMap = new HashMap<String, Long>();
+        List<LimitData> limitDataList = limitDataService.get(request, source);
+        for (LimitData limitData : limitDataList) {
+            limitNamesMap.put(limitData.getName(), limitData.getId());
         }
-        if (limitIds.size() != existedHoldOperations.size()) {
-            log.error("[{}] Count of existed hold operations for limits is not equal to expected (existed size: {}, " +
-                            "expected size: {}, request: {})", logPrefix, existedHoldOperations.size(),
-                    limitIds.size(), request);
-            throw new OperationNotFound();
-        }
+        return limitNamesMap;
     }
 
     private void checkUpdatedOperationsConsistency(LimitRequest request,

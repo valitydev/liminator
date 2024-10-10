@@ -23,9 +23,13 @@ public class CurrentLimitValuesToLimitResponseConverter implements Converter<Lis
                 .map(limitValue -> new LimitResponse(
                         limitValue.getLimitName(),
                         limitValue.getCommitValue(),
-                        limitValue.getHoldValue())
+                        getTotalValue(limitValue))
                         .setLimitId(limitValue.getLimitId())
                 )
                 .toList();
+    }
+
+    private static long getTotalValue(LimitValue limitValue) {
+        return limitValue.getHoldValue() + limitValue.getCommitValue() - limitValue.getRollbackValue();
     }
 }
