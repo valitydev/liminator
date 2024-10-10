@@ -15,5 +15,5 @@ public interface OperationStateHistoryDao extends CommonDao<OperationStateHistor
 
     List<LimitValue> getCurrentLimitValue(List<String> limitNames, String operationId);
 
-    List<OperationStateHistory> get(String operationId, Collection<String> limitNames, List<OperationState> states);
+    List<OperationStateHistory> get(String operationId, Collection<Long> limitIds, List<OperationState> states);
 }

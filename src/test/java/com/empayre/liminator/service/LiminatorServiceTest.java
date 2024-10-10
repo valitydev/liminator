@@ -68,7 +68,7 @@ class LiminatorServiceTest {
     }
 
     @Test
-    void operationNotFoundTest() throws TException {
+    void operationNotFoundWithNotExistHoldTest() throws TException {
         String limitName = "TestLimitCommit";
         String operationId = "OpComit";
         LimitRequest holdRequest = new LimitRequest()
@@ -80,6 +80,38 @@ class LiminatorServiceTest {
         liminatorService.commit(holdRequest);
 
         assertThrows(OperationNotFound.class, () -> liminatorService.rollback(holdRequest));
+    }
+
+    @Test
+    void operationNotFoundWithNotExpectedHoldCountTest() throws TException {
+        String firstLimitName = "TestLimit1";
+        String secondLimitName = "TestLimit2";
+        String operationId = "OpComit";
+        LimitRequest holdRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(
+                        new LimitChange(firstLimitName, 500L),
+                        new LimitChange(secondLimitName, 500L)
+                ));
+
+        liminatorService.hold(holdRequest);
+
+        LimitRequest commitRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(
+                        new LimitChange(firstLimitName, 500L)
+                ));
+
+        liminatorService.commit(commitRequest);
+
+        LimitRequest rollbackRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(
+                        new LimitChange(firstLimitName, 500L),
+                        new LimitChange(secondLimitName, 500L)
+                ));
+
+        assertThrows(OperationNotFound.class, () -> liminatorService.rollback(rollbackRequest));
     }
 
     @Test
@@ -143,7 +175,7 @@ class LiminatorServiceTest {
         List<LimitResponse> limitResponses = liminatorService.getLastLimitsValues(List.of(limitName));
 
         assertEquals(1, limitResponses.size());
-        assertEquals(0, limitResponses.get(0).getTotalValue());
+        assertEquals(1000, limitResponses.get(0).getTotalValue());
         assertEquals(500, limitResponses.get(0).getCommitValue());
         assertEquals(limitName, limitResponses.get(0).getLimitName());
     }
@@ -193,7 +225,7 @@ class LiminatorServiceTest {
         List<LimitResponse> limitResponseAfterFourthHold = liminatorService.hold(fourthHoldRequest);
 
         assertEquals(1, limitResponseAfterFourthHold.size());
-        assertEquals(300, limitResponseAfterFourthHold.get(0).getTotalValue());
+        assertEquals(500, limitResponseAfterFourthHold.get(0).getTotalValue());
         assertEquals(100, limitResponseAfterFourthHold.get(0).getCommitValue());
         assertEquals(limitName, limitResponseAfterFourthHold.get(0).getLimitName());
 
@@ -207,14 +239,14 @@ class LiminatorServiceTest {
         List<LimitResponse> limitResponses = liminatorService.hold(fifthHoldRequest);
 
         assertEquals(1, limitResponses.size());
-        assertEquals(300, limitResponses.get(0).getTotalValue());
+        assertEquals(500, limitResponses.get(0).getTotalValue());
         assertEquals(100, limitResponses.get(0).getCommitValue());
         assertEquals(limitName, limitResponses.get(0).getLimitName());
 
         List<LimitResponse> limitResponseAfterAllForFourthHold = liminatorService.hold(fourthHoldRequest);
 
         assertEquals(1, limitResponseAfterAllForFourthHold.size());
-        assertEquals(300, limitResponseAfterAllForFourthHold.get(0).getTotalValue());
+        assertEquals(500, limitResponseAfterAllForFourthHold.get(0).getTotalValue());
         assertEquals(100, limitResponseAfterAllForFourthHold.get(0).getCommitValue());
         assertEquals(limitName, limitResponseAfterAllForFourthHold.get(0).getLimitName());
     }

@@ -131,12 +131,12 @@ public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
 
     @Override
     public List<OperationStateHistory> get(String operationId,
-                                           Collection<String> limitNames,
+                                           Collection<Long> limitIds,
                                            List<OperationState> states) {
         return dslContext
                 .selectFrom(OPERATION_STATE_HISTORY)
                 .where(OPERATION_STATE_HISTORY.OPERATION_ID.eq(operationId))
-                .and(OPERATION_STATE_HISTORY.LIMIT_NAME.in(limitNames))
+                .and(OPERATION_STATE_HISTORY.LIMIT_ID.in(limitIds))
                 .and(OPERATION_STATE_HISTORY.STATE.in(states))
                 .fetchInto(OperationStateHistory.class);
     }

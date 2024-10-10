@@ -30,6 +30,6 @@ public class CurrentLimitValuesToLimitResponseConverter implements Converter<Lis
     }
 
     private static long getTotalValue(LimitValue limitValue) {
-        return limitValue.getHoldValue() - limitValue.getCommitValue() - limitValue.getRollbackValue();
+        return limitValue.getHoldValue() + limitValue.getCommitValue() - limitValue.getRollbackValue();
     }
 }

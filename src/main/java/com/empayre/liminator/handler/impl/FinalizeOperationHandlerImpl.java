@@ -13,7 +13,9 @@ import org.apache.thrift.TException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static com.empayre.liminator.domain.enums.OperationState.COMMIT;
 import static com.empayre.liminator.domain.enums.OperationState.ROLLBACK;
@@ -29,30 +31,22 @@ public class FinalizeOperationHandlerImpl implements FinalizeOperationHandler {
     @Transactional
     @Override
     public void handle(LimitRequest request, OperationState state) throws TException {
-        List<LimitData> limitData = limitDataService.get(request, state.getLiteral());
-        checkExistedHoldOperations(request, limitData, state);
+        Map<String, Long> limitNamesMap = getLimitDataMap(request, state.getLiteral());
+        limitOperationsHistoryService.checkExistedHoldOperations(request, limitNamesMap.values(), state);
         if (!List.of(COMMIT, ROLLBACK).contains(state)) {
             throw new TException();
         }
-        int[] counts = limitOperationsHistoryService.writeOperations(request, state);
+        int[] counts = limitOperationsHistoryService.writeOperations(request, state, limitNamesMap);
         checkUpdatedOperationsConsistency(request, state, counts.length);
     }
 
-    private void checkExistedHoldOperations(LimitRequest request,
-                                            List<LimitData> limitData,
-                                            OperationState state) throws TException {
-        String logPrefix = state.getLiteral();
-        String operationId = request.getOperationId();
-        var limitNames = limitData.stream()
-                .map(LimitData::getName)
-                .toList();
-        List<OperationState> operationFinalStates = List.of(COMMIT, ROLLBACK);
-        var existedFinaleOperations = limitOperationsHistoryService.get(operationId, limitNames, operationFinalStates);
-        if (limitNames.size() == existedFinaleOperations.size()) {
-            log.error("[{}] Existed hold operations with ID {} not found (request: {})",
-                    logPrefix, operationId, request);
-            throw new OperationNotFound();
+    private HashMap<String, Long> getLimitDataMap(LimitRequest request, String source) throws TException {
+        var limitNamesMap = new HashMap<String, Long>();
+        List<LimitData> limitDataList = limitDataService.get(request, source);
+        for (LimitData limitData : limitDataList) {
+            limitNamesMap.put(limitData.getName(), limitData.getId());
         }
+        return limitNamesMap;
     }
 
     private void checkUpdatedOperationsConsistency(LimitRequest request,

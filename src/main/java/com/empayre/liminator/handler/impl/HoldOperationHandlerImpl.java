@@ -17,8 +17,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 @Slf4j
 @Component
@@ -34,29 +33,29 @@ public class HoldOperationHandlerImpl implements HoldOperationHandler {
     @Transactional
     @Override
     public void handle(LimitRequest request) throws TException {
-        var limitNames = new ArrayList<String>();
+        var limitNamesMap = new HashMap<String, Long>();
         List<LimitChange> limitChanges = request.getLimitChanges();
         for (LimitChange change : limitChanges) {
             LimitData limitData = limitDataService.get(change.getLimitName());
             if (limitData != null) {
-                limitNames.add(limitData.getName());
+                limitNamesMap.put(limitData.getName(), limitData.getId());
             } else {
-                limitDataService.save(change);
-                limitNames.add(change.getLimitName());
+                var limitId = limitDataService.save(change);
+                limitNamesMap.put(change.getLimitName(), limitId);
             }
         }
         String operationId = request.getOperationId();
-        checkExistedFinalizeOperations(limitNames, operationId);
-        log.info("Save operation: {} with limits: {}", operationId, limitNames);
-        int[] counts = limitOperationsHistoryService.writeOperations(request, OperationState.HOLD);
+        checkExistedFinalizeOperations(limitNamesMap, operationId);
+        log.info("Save operation: {} with limits: {}", operationId, Arrays.toString(limitNamesMap.keySet().toArray()));
+        int[] counts = limitOperationsHistoryService.writeOperations(request, OperationState.HOLD, limitNamesMap);
         log.info("Success saved operation: {} with {} limits", operationId, counts.length);
     }
 
-    private void checkExistedFinalizeOperations(List<String> limitNames,
+    private void checkExistedFinalizeOperations(Map<String, Long> limitNamesMap,
                                                 String operationId) throws TException {
         var existedFinalizeOperations = limitOperationsHistoryService.get(
                 operationId,
-                limitNames,
+                limitNamesMap.values(),
                 List.of(OperationState.COMMIT, OperationState.ROLLBACK)
         );
         if (!CollectionUtils.isEmpty(existedFinalizeOperations)) {
