@@ -166,9 +166,10 @@ class LiminatorServiceTest {
     void commitValueTest() throws TException {
         String limitName = "TestLimitCommit";
         String operationId = "OpComit";
+        String limitId = "limit_day_id";
         LimitRequest holdRequest = new LimitRequest()
                 .setOperationId(operationId)
-                .setLimitChanges(List.of(new LimitChange(limitName, 500L)));
+                .setLimitChanges(List.of(new LimitChange(limitName, 500L).setLimitId(limitId)));
         liminatorService.hold(holdRequest);
         liminatorService.commit(holdRequest);
 
@@ -178,6 +179,7 @@ class LiminatorServiceTest {
         assertEquals(1000, limitResponses.get(0).getTotalValue());
         assertEquals(500, limitResponses.get(0).getCommitValue());
         assertEquals(limitName, limitResponses.get(0).getLimitName());
+        assertEquals(limitId, limitResponses.get(0).getLimitId());
     }
 
     @Test

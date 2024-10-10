@@ -136,7 +136,7 @@ public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
         return dslContext
                 .selectFrom(OPERATION_STATE_HISTORY)
                 .where(OPERATION_STATE_HISTORY.OPERATION_ID.eq(operationId))
-                .and(OPERATION_STATE_HISTORY.LIMIT_ID.in(limitIds))
+                .and(OPERATION_STATE_HISTORY.LIMIT_DATA_ID.in(limitIds))
                 .and(OPERATION_STATE_HISTORY.STATE.in(states))
                 .fetchInto(OperationStateHistory.class);
     }

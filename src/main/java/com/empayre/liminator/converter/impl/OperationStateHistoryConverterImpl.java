@@ -23,7 +23,7 @@ public class OperationStateHistoryConverterImpl implements OperationStateHistory
                     OperationStateHistory history = new OperationStateHistory();
                     history.setOperationId(request.getOperationId());
                     history.setLimitName(change.getLimitName());
-                    history.setLimitId(limitNamesMap.get(change.getLimitName()));
+                    history.setLimitDataId(limitNamesMap.get(change.getLimitName()));
                     history.setOperationValue(change.getValue());
                     history.setState(state);
                     history.setCreatedAt(now);
