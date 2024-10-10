@@ -4,7 +4,7 @@ import com.empayre.liminator.config.PostgresqlSpringBootITest;
 import com.empayre.liminator.domain.enums.OperationState;
 import com.empayre.liminator.domain.tables.pojos.LimitContext;
 import com.empayre.liminator.domain.tables.pojos.LimitData;
-import com.empayre.liminator.domain.tables.pojos.Operation;
+import com.empayre.liminator.domain.tables.pojos.OperationStateHistory;
 import com.empayre.liminator.model.LimitValue;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
@@ -28,7 +28,7 @@ class DaoTests {
     private LimitContextDao limitContextDao;
 
     @Autowired
-    private OperationDao operationDao;
+    private OperationStateHistoryDao operationStateHistoryDao;
 
     @Test
     void limitDataDaoTest() {
@@ -56,52 +56,81 @@ class DaoTests {
     }
 
     @Test
-    void operationDaoTest() {
-        List<Long> limitIdsList = new ArrayList<>();
+    void operationDaoHistoryTest() {
         List<String> limitNamesList = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
             String limitName = "Limit-odc-1-" + i;
             String limitId = "Limit-id-odc-1-" + i;
-            Long id = limitDataDao.save(new LimitData(null, limitName, LocalDate.now(), LocalDateTime.now(), limitId));
-            limitIdsList.add(id);
+            limitDataDao.save(new LimitData(null, limitName, LocalDate.now(), LocalDateTime.now(), limitId));
             limitNamesList.add(limitName);
         }
-        List<Operation> operations = new ArrayList<>();
+        List<OperationStateHistory> operations = new ArrayList<>();
         String operationNameTemplate = "Operation-odc-1-%s";
-        for (Long limitId : limitIdsList) {
+        for (String limitName : limitNamesList) {
             for (int i = 0; i < 5; i++) {
-                operations.add(createOperation(limitId, operationNameTemplate.formatted(i)));
+                operations.add(createOperationHistory(limitName, operationNameTemplate.formatted(i)));
             }
         }
-        operationDao.saveBatch(operations);
+        operationStateHistoryDao.saveBatch(operations);
+        operations.clear();
 
-        List<LimitValue> currentLimitValue = operationDao.getCurrentLimitValue(limitNamesList);
-        assertEquals(10, currentLimitValue.size());
+        List<LimitValue> currentLimitValue = operationStateHistoryDao.getCurrentLimitValue(limitNamesList);
+        assertEquals(limitNamesList.size(), currentLimitValue.size());
         currentLimitValue.forEach(value -> assertEquals(0, value.getCommitValue()));
+        currentLimitValue.forEach(value -> assertEquals(0, value.getRollbackValue()));
         currentLimitValue.forEach(value -> assertNotEquals(0, value.getHoldValue()));
+        currentLimitValue.forEach(value -> assertNotEquals(0, getTotal(value)));
 
-        List<Long> commitLimitIds = limitIdsList.subList(0, 3);
+        List<String> commitLimitNames = limitNamesList.subList(0, 3);
         String finalizeOperationName = operationNameTemplate.formatted(1);
-        operationDao.commit(finalizeOperationName, commitLimitIds);
+        for (String limitName : commitLimitNames) {
+            var operationHistory = createOperationHistory(
+                    limitName,
+                    finalizeOperationName,
+                    LocalDateTime.now(),
+                    OperationState.COMMIT);
+            operations.add(operationHistory);
+        }
+        operationStateHistoryDao.saveBatch(operations);
+        operations.clear();
 
-        List<Long> rollbackLimitIds = limitIdsList.subList(4, 9);
-        operationDao.rollback(finalizeOperationName, rollbackLimitIds);
+        List<String> rollbackLimitNames = limitNamesList.subList(4, 9);
+        for (String limitName : rollbackLimitNames) {
+            var operationHistory = createOperationHistory(
+                    limitName,
+                    finalizeOperationName,
+                    LocalDateTime.now(),
+                    OperationState.ROLLBACK);
+            operations.add(operationHistory);
+        }
+        operationStateHistoryDao.saveBatch(operations);
+        operations.clear();
 
-        List<LimitValue> limitValuesAfterChanges = operationDao.getCurrentLimitValue(limitNamesList);
+        List<LimitValue> limitValuesAfterChanges = operationStateHistoryDao.getCurrentLimitValue(limitNamesList);
         List<LimitValue> limitValuesWithCommitData = limitValuesAfterChanges.stream()
-                .filter(value -> value.getCommitValue() == 100 && value.getHoldValue() == 400)
+                .filter(value -> value.getCommitValue() == 100
+                        && value.getHoldValue() == 500
+                        && value.getRollbackValue() == 0)
                 .toList();
         assertEquals(3, limitValuesWithCommitData.size());
 
         List<LimitValue> limitValuesAfterRollback = limitValuesAfterChanges.stream()
-                .filter(value -> value.getHoldValue() == 400 && value.getCommitValue() == 0)
+                .filter(value -> value.getHoldValue() == 500
+                        && value.getCommitValue() == 0
+                        && value.getRollbackValue() == 100)
                 .toList();
         assertEquals(5, limitValuesAfterRollback.size());
 
         List<LimitValue> limitValuesWithoutChanges = limitValuesAfterChanges.stream()
-                .filter(value -> value.getCommitValue() == 0 && value.getHoldValue() == 500)
+                .filter(value -> value.getHoldValue() == 500
+                        && value.getCommitValue() == 0
+                        && value.getRollbackValue() == 0)
                 .toList();
         assertEquals(2, limitValuesWithoutChanges.size());
+    }
+
+    private long getTotal(LimitValue value) {
+        return value.getHoldValue() - value.getCommitValue() - value.getRollbackValue();
     }
 
     @Test
@@ -109,35 +138,39 @@ class DaoTests {
         String limitName = "Limit-odc-2";
         String limitId = "Limit-id-odc-2";
         Long id = limitDataDao.save(new LimitData(null, limitName, LocalDate.now(), LocalDateTime.now(), limitId));
-        List<Operation> operations = new ArrayList<>();
+        List<OperationStateHistory> operations = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
-            Operation operation = createOperation(
-                    id,
+            var operation = createOperationHistory(
+                    limitName,
                     "Operation-odc-2-%s-%s".formatted(id, i),
-                    LocalDateTime.now().minusMinutes(11L - i));
-            operationDao.save(operation);
+                    LocalDateTime.now().minusMinutes(11L - i),
+                    OperationState.HOLD);
+            operationStateHistoryDao.save(operation);
             operations.add(operation);
         }
 
         List<LimitValue> valuesForFifthOperation =
-                operationDao.getCurrentLimitValue(List.of(limitName), operations.get(2).getOperationId());
+                operationStateHistoryDao.getCurrentLimitValue(List.of(limitName), operations.get(2).getOperationId());
         LimitValue limitValue = valuesForFifthOperation.get(0);
-        assertEquals(300, limitValue.getHoldValue());
+        assertEquals(300, getTotal(limitValue));
 
         valuesForFifthOperation =
-                operationDao.getCurrentLimitValue(List.of(limitName), operations.get(5).getOperationId());
-        assertEquals(600, valuesForFifthOperation.get(0).getHoldValue());
+                operationStateHistoryDao.getCurrentLimitValue(List.of(limitName), operations.get(5).getOperationId());
+        assertEquals(600, getTotal(valuesForFifthOperation.get(0)));
     }
 
-    private Operation createOperation(Long limitId, String operationId) {
-        return createOperation(limitId, operationId, LocalDateTime.now());
+    private OperationStateHistory createOperationHistory(String limitName, String operationId) {
+        return createOperationHistory(limitName, operationId, LocalDateTime.now(), OperationState.HOLD);
     }
 
-    private Operation createOperation(Long limitId, String operationId, LocalDateTime createdAt) {
-        Operation operation = new Operation();
-        operation.setLimitId(limitId);
+    private OperationStateHistory createOperationHistory(String limitName,
+                                                         String operationId,
+                                                         LocalDateTime createdAt,
+                                                         OperationState state) {
+        OperationStateHistory operation = new OperationStateHistory();
+        operation.setLimitName(limitName);
         operation.setOperationId(operationId);
-        operation.setState(OperationState.HOLD);
+        operation.setState(state);
         operation.setOperationValue(100L);
         operation.setCreatedAt(createdAt);
         return operation;

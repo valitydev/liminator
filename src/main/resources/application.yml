@@ -20,13 +20,6 @@ spring:
 server:
   port: "${server.port}"
 
-service:
-  default:
-    limit: 20
-  logging:
-    enabled: true
-  skipExistedHoldOps: true
-
 management:
   server:
     port: "${management.port}"

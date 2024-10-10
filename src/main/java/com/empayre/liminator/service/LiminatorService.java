@@ -44,8 +44,10 @@ public class LiminatorService implements LiminatorServiceSrv.Iface {
         try {
             log.info("Start commit operation with request: {}", request);
             finalizeOperationHandler.handle(request, OperationState.COMMIT);
+            log.info("Finish commit operation with request: {}", request);
         } catch (Exception ex) {
             log.error("Commit execution exception. Request: {}", request, ex);
+            throw ex;
         }
     }
 
@@ -54,8 +56,10 @@ public class LiminatorService implements LiminatorServiceSrv.Iface {
         try {
             log.info("Start rollback operation with request: {}", request);
             finalizeOperationHandler.handle(request, OperationState.ROLLBACK);
+            log.info("Finish rollback operation with request: {}", request);
         } catch (Exception ex) {
             log.error("Rollback execution exception. Request: {}", request, ex);
+            throw ex;
         }
     }
 
