@@ -11,9 +11,9 @@ public interface OperationStateHistoryDao extends CommonDao<OperationStateHistor
 
     int[] saveBatch(List<OperationStateHistory> historyList);
 
-    List<LimitValue> getCurrentLimitValue(List<String> limitNames);
+    List<LimitValue> getLimitHistory(List<String> limitNames);
 
-    List<LimitValue> getCurrentLimitValue(List<String> limitNames, String operationId);
+    List<LimitValue> getLimitHistory(List<String> limitNames, String operationId);
 
     List<OperationStateHistory> get(String operationId, Collection<Long> limitIds, List<OperationState> states);
 }

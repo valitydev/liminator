@@ -1,5 +1,6 @@
 package com.empayre.liminator.model;
 
+import com.empayre.liminator.domain.enums.OperationState;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
@@ -9,7 +10,6 @@ public class LimitValue {
 
     private String limitId;
     private String limitName;
-    private Long commitValue;
-    private Long holdValue;
-    private Long rollbackValue;
+    private OperationState state;
+    private Long operationValue;
 }
