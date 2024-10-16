@@ -49,8 +49,8 @@ public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
         return dslContext
                 .select()
                 .from(OPERATION_STATE_HISTORY.join(LIMIT_DATA)
-                        .on(OPERATION_STATE_HISTORY.LIMIT_DATA_ID.eq(LIMIT_DATA.ID)))
-                .where(OPERATION_STATE_HISTORY.LIMIT_NAME.in(limitNames))
+                        .on(OPERATION_STATE_HISTORY.LIMIT_DATA_ID.eq(LIMIT_DATA.ID))
+                        .and(LIMIT_DATA.NAME.in(limitNames)))
                 .fetch()
                 .map(recordMapper);
     }
@@ -60,9 +60,9 @@ public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
         return dslContext
                 .select()
                 .from(OPERATION_STATE_HISTORY.join(LIMIT_DATA)
-                        .on(OPERATION_STATE_HISTORY.LIMIT_DATA_ID.eq(LIMIT_DATA.ID)))
-                .where(OPERATION_STATE_HISTORY.LIMIT_NAME.in(limitNames))
-                .and(OPERATION_STATE_HISTORY.CREATED_AT.le(
+                        .on(OPERATION_STATE_HISTORY.LIMIT_DATA_ID.eq(LIMIT_DATA.ID))
+                        .and(LIMIT_DATA.NAME.in(limitNames)))
+                .where(OPERATION_STATE_HISTORY.CREATED_AT.le(
                         select(OPERATION_STATE_HISTORY.CREATED_AT)
                                 .from(OPERATION_STATE_HISTORY)
                                 .where(OPERATION_STATE_HISTORY.OPERATION_ID.eq(operationId))
