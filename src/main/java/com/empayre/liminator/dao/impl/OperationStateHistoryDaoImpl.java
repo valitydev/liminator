@@ -47,8 +47,9 @@ public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
     @Override
     public List<LimitValue> getLimitHistory(List<String> limitNames) {
         return dslContext
-                .selectFrom(OPERATION_STATE_HISTORY.join(LIMIT_DATA)
-                        .on(OPERATION_STATE_HISTORY.LIMIT_NAME.eq(LIMIT_DATA.NAME)))
+                .select()
+                .from(OPERATION_STATE_HISTORY.join(LIMIT_DATA)
+                        .on(OPERATION_STATE_HISTORY.LIMIT_DATA_ID.eq(LIMIT_DATA.ID)))
                 .where(OPERATION_STATE_HISTORY.LIMIT_NAME.in(limitNames))
                 .fetch()
                 .map(recordMapper);
@@ -57,8 +58,9 @@ public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
     @Override
     public List<LimitValue> getLimitHistory(List<String> limitNames, String operationId) {
         return dslContext
-                .selectFrom(OPERATION_STATE_HISTORY.join(LIMIT_DATA)
-                        .on(OPERATION_STATE_HISTORY.LIMIT_NAME.eq(LIMIT_DATA.NAME)))
+                .select()
+                .from(OPERATION_STATE_HISTORY.join(LIMIT_DATA)
+                        .on(OPERATION_STATE_HISTORY.LIMIT_DATA_ID.eq(LIMIT_DATA.ID)))
                 .where(OPERATION_STATE_HISTORY.LIMIT_NAME.in(limitNames))
                 .and(OPERATION_STATE_HISTORY.CREATED_AT.le(
                         select(OPERATION_STATE_HISTORY.CREATED_AT)
@@ -76,7 +78,8 @@ public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
                                            Collection<Long> limitIds,
                                            List<OperationState> states) {
         return dslContext
-                .selectFrom(OPERATION_STATE_HISTORY)
+                .select()
+                .from(OPERATION_STATE_HISTORY)
                 .where(OPERATION_STATE_HISTORY.OPERATION_ID.eq(operationId))
                 .and(OPERATION_STATE_HISTORY.LIMIT_DATA_ID.in(limitIds))
                 .and(OPERATION_STATE_HISTORY.STATE.in(states))
