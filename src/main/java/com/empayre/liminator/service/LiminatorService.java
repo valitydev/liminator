@@ -68,7 +68,9 @@ public class LiminatorService implements LiminatorServiceSrv.Iface {
             throws LimitNotFound, LimitsValuesReadingException, TException {
         try {
             log.info("Get limits with request: {}", request);
-            return getLimitsValuesHandler.handle(request);
+            List<LimitResponse> limitResponses = getLimitsValuesHandler.handle(request);
+            log.info("Success get limit responses: {}", limitResponses);
+            return limitResponses;
         } catch (DataAccessException ex) {
             log.error("[GET] Received DaoException for getting limits operation (request: {})", request, ex);
             throw new LimitsValuesReadingException();
@@ -80,7 +82,9 @@ public class LiminatorService implements LiminatorServiceSrv.Iface {
             throws LimitNotFound, LimitsValuesReadingException, TException {
         try {
             log.info("Get last limits for limits: {}", Arrays.toString(limitNames.toArray()));
-            return getLastLimitsValuesHandler.handle(limitNames);
+            List<LimitResponse> limitResponses = getLastLimitsValuesHandler.handle(limitNames);
+            log.info("Success get last limits response: {}", limitResponses);
+            return limitResponses;
         } catch (DataAccessException ex) {
             log.error("[GET] Received DaoException for getting last limits operation (limitNames: {})", limitNames, ex);
             throw new LimitsValuesReadingException();

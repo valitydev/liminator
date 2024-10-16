@@ -34,11 +34,11 @@ public class LimitOperationsHistoryService {
     }
 
     public List<LimitValue> getCurrentLimitValue(List<String> limitNames) {
-        return operationStateHistoryDao.getCurrentLimitValue(limitNames);
+        return operationStateHistoryDao.getLimitHistory(limitNames);
     }
 
     public List<LimitValue> getCurrentLimitValue(List<String> limitNames, String operationId) {
-        return operationStateHistoryDao.getCurrentLimitValue(limitNames, operationId);
+        return operationStateHistoryDao.getLimitHistory(limitNames, operationId);
     }
 
     public List<OperationStateHistory> get(String operationId,
