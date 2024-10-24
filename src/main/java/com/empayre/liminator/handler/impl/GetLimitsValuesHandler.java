@@ -1,7 +1,7 @@
 package com.empayre.liminator.handler.impl;
 
 import com.empayre.liminator.handler.Handler;
-import com.empayre.liminator.model.LimitValue;
+import com.empayre.liminator.model.CurrentLimitValue;
 import com.empayre.liminator.service.LimitOperationsHistoryService;
 import dev.vality.liminator.LimitChange;
 import dev.vality.liminator.LimitRequest;
@@ -22,7 +22,7 @@ import java.util.List;
 public class GetLimitsValuesHandler implements Handler<LimitRequest, List<LimitResponse>> {
 
     private final LimitOperationsHistoryService limitOperationsHistoryService;
-    private final Converter<List<LimitValue>, List<LimitResponse>> currentLimitValuesToLimitResponseConverter;
+    private final Converter<List<CurrentLimitValue>, List<LimitResponse>> currentLimitValuesToLimitResponsesConverter;
 
     @Transactional
     @Override
@@ -31,8 +31,9 @@ public class GetLimitsValuesHandler implements Handler<LimitRequest, List<LimitR
                 .map(LimitChange::getLimitName)
                 .toList();
         String operationId = request.getOperationId();
-        List<LimitValue> limitValues = limitOperationsHistoryService.getCurrentLimitValue(limitNames, operationId);
+        List<CurrentLimitValue> limitValues =
+                limitOperationsHistoryService.getCurrentLimitValue(limitNames, operationId);
         log.debug("Success get limits: {}", Arrays.toString(limitValues.toArray()));
-        return currentLimitValuesToLimitResponseConverter.convert(limitValues);
+        return currentLimitValuesToLimitResponsesConverter.convert(limitValues);
     }
 }

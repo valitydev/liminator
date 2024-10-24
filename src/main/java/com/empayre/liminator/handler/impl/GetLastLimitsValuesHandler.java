@@ -1,7 +1,7 @@
 package com.empayre.liminator.handler.impl;
 
 import com.empayre.liminator.handler.Handler;
-import com.empayre.liminator.model.LimitValue;
+import com.empayre.liminator.model.CurrentLimitValue;
 import com.empayre.liminator.service.LimitOperationsHistoryService;
 import dev.vality.liminator.LimitResponse;
 import lombok.RequiredArgsConstructor;
@@ -20,13 +20,13 @@ import java.util.List;
 public class GetLastLimitsValuesHandler implements Handler<List<String>, List<LimitResponse>> {
 
     private final LimitOperationsHistoryService limitOperationsHistoryService;
-    private final Converter<List<LimitValue>, List<LimitResponse>> currentLimitValuesToLimitResponseConverter;
+    private final Converter<List<CurrentLimitValue>, List<LimitResponse>> currentLimitValuesToLimitResponsesConverter;
 
     @Transactional
     @Override
     public List<LimitResponse> handle(List<String> limitIdNames) throws TException {
-        List<LimitValue> currentLimitValues = limitOperationsHistoryService.getCurrentLimitValue(limitIdNames);
+        List<CurrentLimitValue> currentLimitValues = limitOperationsHistoryService.getCurrentLimitValue(limitIdNames);
         log.debug("Success get last limits: {}", Arrays.toString(currentLimitValues.toArray()));
-        return currentLimitValuesToLimitResponseConverter.convert(currentLimitValues);
+        return currentLimitValuesToLimitResponsesConverter.convert(currentLimitValues);
     }
 }
