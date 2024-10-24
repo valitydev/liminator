@@ -184,7 +184,7 @@ class LiminatorServiceTest {
         List<LimitResponse> commitResponses = liminatorService.getLastLimitsValues(List.of(limitName));
 
         assertEquals(1, commitResponses.size());
-        assertEquals(0, commitResponses.get(0).getTotalValue());
+        assertEquals(500, commitResponses.get(0).getTotalValue());
         assertEquals(500, commitResponses.get(0).getCommitValue());
         assertEquals(limitName, commitResponses.get(0).getLimitName());
         assertEquals(limitId, commitResponses.get(0).getLimitId());
@@ -218,52 +218,44 @@ class LiminatorServiceTest {
     void complexOperationsTest() throws TException {
         String limitName = "TestLimitComplex";
         String operationId = "Op-112-%s";
-        LimitRequest firstHoldRequest = new LimitRequest()
-                .setOperationId(operationId.formatted(1))
-                .setLimitChanges(List.of(new LimitChange(limitName, 100L)));
+
+        LimitRequest firstHoldRequest = createRequest(limitName, operationId.formatted(1));
         liminatorService.hold(firstHoldRequest);
-        LimitRequest secondHoldRequest = new LimitRequest()
-                .setOperationId(operationId.formatted(2))
-                .setLimitChanges(List.of(new LimitChange(limitName, 100L)));
-        liminatorService.hold(secondHoldRequest);
+        liminatorService.hold(createRequest(limitName, operationId.formatted(2)));
+        liminatorService.commit(createRequest(limitName, operationId.formatted(2)));
+        liminatorService.hold(createRequest(limitName, operationId.formatted(3)));
+        List<LimitResponse> limitResponseAfterFourthHold =
+                liminatorService.hold(createRequest(limitName, operationId.formatted(4)));
 
-        liminatorService.commit(secondHoldRequest);
-
-        LimitRequest thirdHoldRequest = new LimitRequest()
-                .setOperationId(operationId.formatted(3))
-                .setLimitChanges(List.of(new LimitChange(limitName, 100L)));
-        liminatorService.hold(thirdHoldRequest);
-
-        LimitRequest fourthHoldRequest = new LimitRequest()
-                .setOperationId(operationId.formatted(4))
-                .setLimitChanges(List.of(new LimitChange(limitName, 100L)));
-
-        List<LimitResponse> limitResponseAfterFourthHold = liminatorService.hold(fourthHoldRequest);
-
+        // total: 3 hold ops, 1 commit: total - 400, commit - 100
         assertEquals(1, limitResponseAfterFourthHold.size());
-        assertEquals(300, limitResponseAfterFourthHold.get(0).getTotalValue());
+        assertEquals(400, limitResponseAfterFourthHold.get(0).getTotalValue());
         assertEquals(100, limitResponseAfterFourthHold.get(0).getCommitValue());
         assertEquals(limitName, limitResponseAfterFourthHold.get(0).getLimitName());
 
         liminatorService.rollback(firstHoldRequest);
+        List<LimitResponse> limitResponses = liminatorService.getLastLimitsValues(List.of(limitName));
 
-        LimitRequest fifthHoldRequest = new LimitRequest()
-                .setOperationId(operationId.formatted(5))
-                .setLimitChanges(List.of(new LimitChange(limitName, 100L)));
-        liminatorService.hold(fifthHoldRequest);
-
-        List<LimitResponse> limitResponses = liminatorService.hold(fifthHoldRequest);
-
+        // total: 2 hold ops, 1 commit; total - 300, commit - 100
         assertEquals(1, limitResponses.size());
         assertEquals(300, limitResponses.get(0).getTotalValue());
         assertEquals(100, limitResponses.get(0).getCommitValue());
         assertEquals(limitName, limitResponses.get(0).getLimitName());
 
-        List<LimitResponse> limitResponseAfterAllForFourthHold = liminatorService.hold(fourthHoldRequest);
+        liminatorService.commit(createRequest(limitName, operationId.formatted(3)));
+        List<LimitResponse> limitResponseAfterAllForFourthHold =
+                liminatorService.getLastLimitsValues(List.of(limitName));
 
+        // total: 1 hold ops, 2 commit;
         assertEquals(1, limitResponseAfterAllForFourthHold.size());
         assertEquals(300, limitResponseAfterAllForFourthHold.get(0).getTotalValue());
-        assertEquals(100, limitResponseAfterAllForFourthHold.get(0).getCommitValue());
+        assertEquals(200, limitResponseAfterAllForFourthHold.get(0).getCommitValue());
         assertEquals(limitName, limitResponseAfterAllForFourthHold.get(0).getLimitName());
+    }
+
+    private LimitRequest createRequest(String limitName, String operationId) {
+        return new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(new LimitChange(limitName, 100L)));
     }
 }

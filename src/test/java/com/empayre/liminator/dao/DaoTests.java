@@ -5,6 +5,7 @@ import com.empayre.liminator.domain.enums.OperationState;
 import com.empayre.liminator.domain.tables.pojos.LimitContext;
 import com.empayre.liminator.domain.tables.pojos.LimitData;
 import com.empayre.liminator.domain.tables.pojos.OperationStateHistory;
+import com.empayre.liminator.model.CurrentLimitValue;
 import com.empayre.liminator.model.LimitValue;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -131,6 +133,54 @@ class DaoTests {
                 .filter(value -> value.getState() == OperationState.HOLD)
                 .toList();
         assertEquals(currentLimitValue.size(), operationsWithHold.size());
+    }
+
+    // total = hold1 + hold2 + hold3 + commit4 + commit5
+    // -> received commit for hold2
+    // total = hold1 + hold3 + commit4 + commit5 + commit2
+    @Test
+    void getCurrentValuesTest() {
+        var limitsMap = new HashMap<String, Long>();
+        for (int i = 0; i < 2; i++) {
+            String limitName = "Limit-CV-" + i;
+            String limitId = "Limit-CV-ID-" + i;
+            Long id = limitDataDao.save(new LimitData(null, limitName, LocalDate.now(), LocalDateTime.now(), limitId));
+            limitsMap.put(limitName, id);
+        }
+        Map<String, List<OperationStateHistory>> holdOperationsMap = new HashMap<>();
+        String operationNameTemplate = "%s-operation-%s";
+        for (String limitName : limitsMap.keySet()) {
+            List<OperationStateHistory> holdOperations = new ArrayList<>();
+            for (int i = 0; i < 5; i++) {
+                holdOperations.add(
+                        createOperationHistory(
+                                limitName,
+                                limitsMap.get(limitName),
+                                operationNameTemplate.formatted(limitName, i))
+                );
+            }
+            operationStateHistoryDao.saveBatch(holdOperations);
+            holdOperationsMap.put(limitName, holdOperations);
+        }
+
+        for (String limitName : holdOperationsMap.keySet()) {
+            List<OperationStateHistory> holdOperations = holdOperationsMap.get(limitName);
+            for (OperationStateHistory holdOperation : holdOperations.subList(0, 2)) {
+                var commitOperation = createOperationHistory(
+                        limitName,
+                        limitsMap.get(limitName),
+                        holdOperation.getOperationId(),
+                        LocalDateTime.now(),
+                        OperationState.COMMIT);
+                operationStateHistoryDao.save(commitOperation);
+            }
+        }
+
+        List<String> limitNames = holdOperationsMap.keySet().stream().toList();
+        List<CurrentLimitValue> currentValues = operationStateHistoryDao.getCurrentValues(limitNames);
+        CurrentLimitValue currentLimitValue = currentValues.get(0);
+        assertEquals(200, currentLimitValue.getCommitValue());
+        assertEquals(300, currentLimitValue.getHoldValue());
     }
 
     private OperationStateHistory createOperationHistory(String limitName, Long id, String operationId) {
