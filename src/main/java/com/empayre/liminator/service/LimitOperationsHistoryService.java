@@ -4,7 +4,7 @@ import com.empayre.liminator.converter.OperationStateHistoryConverter;
 import com.empayre.liminator.dao.OperationStateHistoryDao;
 import com.empayre.liminator.domain.enums.OperationState;
 import com.empayre.liminator.domain.tables.pojos.OperationStateHistory;
-import com.empayre.liminator.model.LimitValue;
+import com.empayre.liminator.model.CurrentLimitValue;
 import dev.vality.liminator.LimitRequest;
 import dev.vality.liminator.OperationNotFound;
 import lombok.RequiredArgsConstructor;
@@ -33,12 +33,12 @@ public class LimitOperationsHistoryService {
         return operationStateHistoryDao.saveBatch(operationsHistory);
     }
 
-    public List<LimitValue> getCurrentLimitValue(List<String> limitNames) {
-        return operationStateHistoryDao.getLimitHistory(limitNames);
+    public List<CurrentLimitValue> getCurrentLimitValue(List<String> limitNames) {
+        return operationStateHistoryDao.getCurrentValues(limitNames);
     }
 
-    public List<LimitValue> getCurrentLimitValue(List<String> limitNames, String operationId) {
-        return operationStateHistoryDao.getLimitHistory(limitNames, operationId);
+    public List<CurrentLimitValue> getCurrentLimitValue(List<String> limitNames, String operationId) {
+        return operationStateHistoryDao.getCurrentValues(limitNames, operationId);
     }
 
     public List<OperationStateHistory> get(String operationId,
@@ -53,7 +53,8 @@ public class LimitOperationsHistoryService {
         String logPrefix = state.getLiteral();
         String operationId = request.getOperationId();
         List<OperationState> operationFinalStates = List.of(COMMIT, ROLLBACK);
-        var existedFinalOperations = operationStateHistoryDao.get(operationId, limitIds, operationFinalStates);
+        var existedFinalOperations =
+                operationStateHistoryDao.get(operationId, limitIds, operationFinalStates);
         if (limitIds.size() == existedFinalOperations.size()) {
             log.error("[{}] Existed hold operations with ID {} not found (request: {})",
                     logPrefix, operationId, request);
