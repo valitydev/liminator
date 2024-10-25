@@ -141,7 +141,7 @@ class DaoTests {
     @Test
     void getCurrentValuesTest() {
         var limitsMap = new HashMap<String, Long>();
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < 1; i++) {
             String limitName = "Limit-CV-" + i;
             String limitId = "Limit-CV-ID-" + i;
             Long id = limitDataDao.save(new LimitData(null, limitName, LocalDate.now(), LocalDateTime.now(), limitId));
@@ -152,17 +152,17 @@ class DaoTests {
         for (String limitName : limitsMap.keySet()) {
             List<OperationStateHistory> holdOperations = new ArrayList<>();
             for (int i = 0; i < 5; i++) {
-                holdOperations.add(
-                        createOperationHistory(
-                                limitName,
-                                limitsMap.get(limitName),
-                                operationNameTemplate.formatted(limitName, i))
-                );
+                OperationStateHistory operationHistory = createOperationHistory(
+                        limitName,
+                        limitsMap.get(limitName),
+                        operationNameTemplate.formatted(limitName, i));
+                holdOperations.add(operationHistory);
+                operationStateHistoryDao.save(operationHistory);
             }
-            operationStateHistoryDao.saveBatch(holdOperations);
             holdOperationsMap.put(limitName, holdOperations);
         }
 
+        OperationStateHistory firstCommitOp = null;
         for (String limitName : holdOperationsMap.keySet()) {
             List<OperationStateHistory> holdOperations = holdOperationsMap.get(limitName);
             for (OperationStateHistory holdOperation : holdOperations.subList(0, 2)) {
@@ -172,6 +172,9 @@ class DaoTests {
                         holdOperation.getOperationId(),
                         LocalDateTime.now(),
                         OperationState.COMMIT);
+                if (firstCommitOp == null) {
+                    firstCommitOp = commitOperation;
+                }
                 operationStateHistoryDao.save(commitOperation);
             }
         }
@@ -181,6 +184,21 @@ class DaoTests {
         CurrentLimitValue currentLimitValue = currentValues.get(0);
         assertEquals(200, currentLimitValue.getCommitValue());
         assertEquals(300, currentLimitValue.getHoldValue());
+
+        String firstLimitName = limitNames.get(0);
+        List<OperationStateHistory> holds = holdOperationsMap.get(firstLimitName);
+        OperationStateHistory holdOperation = holds.get(holds.size() - 2);
+        List<CurrentLimitValue> middleCurrentValues =
+                operationStateHistoryDao.getCurrentValues(List.of(firstLimitName), holdOperation.getOperationId());
+        CurrentLimitValue middleCurrentLimitValue = middleCurrentValues.get(0);
+        assertEquals(0, middleCurrentLimitValue.getCommitValue());
+        assertEquals(400, middleCurrentLimitValue.getHoldValue());
+
+        List<CurrentLimitValue> firstCommitCurrentValues =
+                operationStateHistoryDao.getCurrentValues(List.of(firstLimitName), firstCommitOp.getOperationId());
+        CurrentLimitValue firstCurrentLimitValue = firstCommitCurrentValues.get(0);
+        assertEquals(100, firstCurrentLimitValue.getCommitValue());
+        assertEquals(400, firstCurrentLimitValue.getHoldValue());
     }
 
     private OperationStateHistory createOperationHistory(String limitName, Long id, String operationId) {

@@ -97,12 +97,11 @@ public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
         var holdOps = OPERATION_STATE_HISTORY.as("hold_ops");
         var commitOps = OPERATION_STATE_HISTORY.as("commit_ops");
         var rollbackOps = OPERATION_STATE_HISTORY.as("rollback_ops");
-        Condition createdAtCondition = operationId == null ? DSL.trueCondition() : holdOps.CREATED_AT.le(
-                select(OPERATION_STATE_HISTORY.CREATED_AT)
-                        .from(OPERATION_STATE_HISTORY)
-                        .where(OPERATION_STATE_HISTORY.OPERATION_ID.eq(operationId))
-                        .limit(1)
-        );
+        var createdAtSelect = select(OPERATION_STATE_HISTORY.CREATED_AT)
+                .from(OPERATION_STATE_HISTORY)
+                .where(OPERATION_STATE_HISTORY.OPERATION_ID.eq(operationId))
+                .orderBy(OPERATION_STATE_HISTORY.CREATED_AT.desc())
+                .limit(1);
         var query = dslContext
                 .select(
                         LIMIT_DATA.LIMIT_ID,
@@ -118,19 +117,25 @@ public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
                                 .on(
                                         LIMIT_DATA.ID.eq(holdOps.LIMIT_DATA_ID)
                                                 .and(holdOps.STATE.eq(OperationState.HOLD))
-                                                .and(createdAtCondition)
+                                                .and(operationId == null
+                                                        ? DSL.trueCondition()
+                                                        : holdOps.CREATED_AT.le(createdAtSelect))
                                 )
                                 .leftJoin(commitOps)
                                 .on(
                                         commitOps.OPERATION_ID.eq(holdOps.OPERATION_ID)
                                                 .and(commitOps.STATE.in(OperationState.COMMIT))
-                                                .and(createdAtCondition)
+                                                .and(operationId == null
+                                                        ? DSL.trueCondition()
+                                                        : commitOps.CREATED_AT.le(createdAtSelect))
                                 )
                                 .leftJoin(rollbackOps)
                                 .on(
                                         rollbackOps.OPERATION_ID.eq(holdOps.OPERATION_ID)
                                                 .and(rollbackOps.STATE.in(OperationState.ROLLBACK))
-                                                .and(createdAtCondition)
+                                                .and(operationId == null
+                                                        ? DSL.trueCondition()
+                                                        : rollbackOps.CREATED_AT.le(createdAtSelect))
                                 )
                 )
                 .where(LIMIT_DATA.NAME.in(limitNames))
