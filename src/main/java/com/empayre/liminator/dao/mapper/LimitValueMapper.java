@@ -15,7 +15,7 @@ public class LimitValueMapper implements RecordMapper<Record, LimitValue> {
     @Override
     public LimitValue map(Record opsDataRecord) {
         String limitId = opsDataRecord.get(LIMIT_DATA.LIMIT_ID);
-        String limitName = opsDataRecord.get(OPERATION_STATE_HISTORY.LIMIT_NAME);
+        String limitName = opsDataRecord.get(LIMIT_DATA.NAME);
         Long operationValue = opsDataRecord.get(OPERATION_STATE_HISTORY.OPERATION_VALUE);
         OperationState state = OperationState.valueOf(opsDataRecord.get("state", String.class));
         return new LimitValue(limitId, limitName, state, operationValue);

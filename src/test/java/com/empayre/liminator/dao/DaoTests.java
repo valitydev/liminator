@@ -211,7 +211,6 @@ class DaoTests {
                                                          LocalDateTime createdAt,
                                                          OperationState state) {
         OperationStateHistory operation = new OperationStateHistory();
-        operation.setLimitName(limitName);
         operation.setLimitDataId(id);
         operation.setOperationId(operationId);
         operation.setState(state);

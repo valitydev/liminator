@@ -253,6 +253,62 @@ class LiminatorServiceTest {
         assertEquals(limitName, limitResponseAfterAllForFourthHold.get(0).getLimitName());
     }
 
+    @Test
+    void holdCommitFewValueTest() throws TException {
+        String limitNameFirst = "TestLimitHold";
+        String limitNameSecond = "TestLimitHold2";
+        String limitNameThird = "TestLimitHold3";
+        String operationId = "OpHold";
+        LimitRequest holdRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(
+                        new LimitChange(limitNameFirst, 500L),
+                        new LimitChange(limitNameSecond, 500L),
+                        new LimitChange(limitNameThird, 500L))
+                );
+
+        List<LimitResponse> holdResponse = liminatorService.hold(holdRequest);
+
+        assertEquals(3, holdResponse.size());
+        LimitResponse limitResponseFirst = getLimitResponseByLimitName(holdResponse, limitNameFirst);
+        assertEquals(limitNameFirst, limitResponseFirst.getLimitName());
+        assertEquals(500, limitResponseFirst.getTotalValue());
+        assertEquals(0, limitResponseFirst.getCommitValue());
+        LimitResponse limitResponseSecond = getLimitResponseByLimitName(holdResponse, limitNameSecond);
+        assertEquals(limitNameSecond, limitResponseSecond.getLimitName());
+        assertEquals(500, limitResponseSecond.getTotalValue());
+        assertEquals(0, limitResponseSecond.getCommitValue());
+        LimitResponse limitResponseThird = getLimitResponseByLimitName(holdResponse, limitNameThird);
+        assertEquals(limitNameThird, limitResponseThird.getLimitName());
+        assertEquals(500, limitResponseThird.getTotalValue());
+        assertEquals(0, limitResponseThird.getCommitValue());
+
+        liminatorService.commit(holdRequest);
+        List<LimitResponse> lastLimitsValues =
+                liminatorService.getLastLimitsValues(List.of(limitNameFirst, limitNameSecond, limitNameThird));
+        assertEquals(3, lastLimitsValues.size());
+        LimitResponse firstLimitResponseAfterCommit = getLimitResponseByLimitName(lastLimitsValues, limitNameFirst);
+        assertEquals(limitNameFirst, firstLimitResponseAfterCommit.getLimitName());
+        assertEquals(500, firstLimitResponseAfterCommit.getTotalValue());
+        assertEquals(500, firstLimitResponseAfterCommit.getCommitValue());
+        LimitResponse secondLimitResponseAfterCommit = getLimitResponseByLimitName(lastLimitsValues, limitNameSecond);
+        assertEquals(limitNameSecond, secondLimitResponseAfterCommit.getLimitName());
+        assertEquals(500, secondLimitResponseAfterCommit.getTotalValue());
+        assertEquals(500, secondLimitResponseAfterCommit.getCommitValue());
+        LimitResponse thirdLimitResponseAfterCommit = getLimitResponseByLimitName(lastLimitsValues, limitNameThird);
+        assertEquals(limitNameThird, thirdLimitResponseAfterCommit.getLimitName());
+        assertEquals(500, thirdLimitResponseAfterCommit.getTotalValue());
+        assertEquals(500, thirdLimitResponseAfterCommit.getCommitValue());
+
+    }
+
+    private LimitResponse getLimitResponseByLimitName(List<LimitResponse> response, String limitName) {
+        return response.stream()
+                .filter(limitResponse -> limitResponse.getLimitName().equals(limitName))
+                .findFirst()
+                .get();
+    }
+
     private LimitRequest createRequest(String limitName, String operationId) {
         return new LimitRequest()
                 .setOperationId(operationId)
