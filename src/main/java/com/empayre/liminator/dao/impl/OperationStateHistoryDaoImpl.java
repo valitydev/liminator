@@ -124,6 +124,7 @@ public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
                                 .leftJoin(commitOps)
                                 .on(
                                         commitOps.OPERATION_ID.eq(holdOps.OPERATION_ID)
+                                                .and(commitOps.LIMIT_DATA_ID.eq(holdOps.LIMIT_DATA_ID))
                                                 .and(commitOps.STATE.in(OperationState.COMMIT))
                                                 .and(operationId == null
                                                         ? DSL.trueCondition()
@@ -132,6 +133,7 @@ public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
                                 .leftJoin(rollbackOps)
                                 .on(
                                         rollbackOps.OPERATION_ID.eq(holdOps.OPERATION_ID)
+                                                .and(rollbackOps.LIMIT_DATA_ID.eq(holdOps.LIMIT_DATA_ID))
                                                 .and(rollbackOps.STATE.in(OperationState.ROLLBACK))
                                                 .and(operationId == null
                                                         ? DSL.trueCondition()
