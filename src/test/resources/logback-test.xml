@@ -7,5 +7,5 @@
         <appender-ref ref="CONSOLE"/>
     </root>
     <logger name="dev.vality.woody" level="warn"/>
-    <logger name="com.empayre.liminator" level="all"/>
+    <logger name="dev.vality.liminator" level="all"/>
 </configuration>

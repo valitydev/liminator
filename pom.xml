@@ -341,7 +341,7 @@
                             <inputSchema>${db.schema}</inputSchema>
                         </database>
                         <target>
-                            <packageName>com.empayre.liminator.domain</packageName>
+                            <packageName>dev.vality.liminator.domain</packageName>
                             <directory>target/generated-sources/</directory>
                         </target>
                     </generator>
