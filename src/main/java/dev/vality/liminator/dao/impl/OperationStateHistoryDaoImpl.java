@@ -102,13 +102,16 @@ public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
                 .where(OPERATION_STATE_HISTORY.OPERATION_ID.eq(operationId))
                 .orderBy(OPERATION_STATE_HISTORY.CREATED_AT.desc())
                 .limit(1);
+        var zero = DSL.zero().cast(Long.class);
         var query = dslContext
                 .select(
                         LIMIT_DATA.LIMIT_ID,
                         LIMIT_DATA.NAME,
-                        DSL.sum(DSL.coalesce(holdOps.OPERATION_VALUE, 0)
-                                .minus(DSL.coalesce(commitOps.OPERATION_VALUE, 0))
-                                .minus(DSL.coalesce(rollbackOps.OPERATION_VALUE, 0)).cast(Long.class)),
+                        DSL.sum(DSL.when(
+                                DSL.coalesce(commitOps.OPERATION_VALUE, 0).greaterThan(0)
+                                        .or(DSL.coalesce(rollbackOps.OPERATION_VALUE, 0).greaterThan(0)), zero)
+                                        .otherwise(DSL.coalesce(holdOps.OPERATION_VALUE, 0).cast(Long.class))
+                                ).cast(Long.class),
                         DSL.sum(DSL.coalesce(commitOps.OPERATION_VALUE, 0).cast(Long.class))
                 )
                 .from(
@@ -154,5 +157,19 @@ public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
                         )
                 )
                 .toList();
+    }
+
+    @Override
+    public List<LimitValue> getHoldLimitValues(Collection<String> limitNames, String operationId) {
+        return dslContext
+                .select()
+                .from(OPERATION_STATE_HISTORY
+                        .join(LIMIT_DATA)
+                        .on(OPERATION_STATE_HISTORY.LIMIT_DATA_ID.eq(LIMIT_DATA.ID))
+                        .and(OPERATION_STATE_HISTORY.OPERATION_ID.eq(operationId))
+                        .and(OPERATION_STATE_HISTORY.STATE.eq(OperationState.HOLD))
+                        .and(LIMIT_DATA.NAME.in(limitNames)))
+                .fetch()
+                .map(recordMapper);
     }
 }
