@@ -32,7 +32,7 @@ public class FinalizeOperationHandlerImpl implements FinalizeOperationHandler {
     @Override
     public void handle(LimitRequest request, OperationState state) throws TException {
         Map<String, Long> limitNamesMap = getLimitDataMap(request, state.getLiteral());
-        limitOperationsHistoryService.checkExistedHoldOperations(request, limitNamesMap.values(), state);
+        limitOperationsHistoryService.checkCorrectnessFinalizingOperation(request, limitNamesMap, state);
         if (!List.of(COMMIT, ROLLBACK).contains(state)) {
             throw new TException();
         }

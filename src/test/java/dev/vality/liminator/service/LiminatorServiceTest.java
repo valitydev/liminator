@@ -9,8 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 
 @PostgresqlSpringBootITest
 class LiminatorServiceTest {
@@ -81,6 +80,50 @@ class LiminatorServiceTest {
         liminatorService.commit(holdRequest);
 
         assertThrows(OperationNotFound.class, () -> liminatorService.rollback(holdRequest));
+    }
+
+    @Test
+    void commitLessThanHoldTest() throws TException {
+        String limitName = "TestLimitCommit";
+        String operationId = "Op-123";
+        LimitRequest holdRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(new LimitChange(limitName, 500L)));
+        liminatorService.hold(holdRequest);
+
+        List<LimitResponse> limitsBeforeCommit = liminatorService.getLastLimitsValues(List.of(limitName));
+        assertNotNull(limitsBeforeCommit);
+        LimitResponse responseBeforeCommit = limitsBeforeCommit.stream().findFirst().get();
+        assertEquals(500L, responseBeforeCommit.getTotalValue());
+        assertEquals(0, responseBeforeCommit.getCommitValue());
+
+        LimitRequest commitRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(new LimitChange(limitName, 300L)));
+        liminatorService.commit(commitRequest);
+
+        List<LimitResponse> limitsAfterCommit = liminatorService.getLastLimitsValues(List.of(limitName));
+        assertNotNull(limitsAfterCommit);
+        LimitResponse response = limitsAfterCommit.stream().findFirst().get();
+        assertEquals(300L, response.getCommitValue());
+        assertEquals(300L, response.getTotalValue());
+    }
+
+    @Test
+    void commitGrossThanHoldTest() throws TException {
+        String limitName = "TestLimitCommit";
+        String operationId = "Op-123";
+        LimitRequest holdRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(new LimitChange(limitName, 500L)));
+
+        liminatorService.hold(holdRequest);
+
+        LimitRequest commitRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(new LimitChange(limitName, 600L)));
+
+        assertThrows(OperationNotFound.class, () -> liminatorService.commit(commitRequest));
     }
 
     @Test
