@@ -60,9 +60,9 @@ public class LimitOperationsHistoryService {
 
     // The operation for the limit is always unique. If some limit from the pool already had a final value,
     // then we will fail the entire pack
-    public List<OperationStateHistory> checkExistedFinalOperations(LimitRequest request,
-                                                                   Map<String, Long> limitNamesMap,
-                                                                   OperationState state) throws TException {
+    private List<OperationStateHistory> checkExistedFinalOperations(LimitRequest request,
+                                                                    Map<String, Long> limitNamesMap,
+                                                                    OperationState state) throws TException {
         String operationId = request.getOperationId();
         var limitIds = limitNamesMap.values();
         var existedFinalOperations =
@@ -76,9 +76,9 @@ public class LimitOperationsHistoryService {
     }
 
     // For each finalizing operation, there must be a hold operation
-    public List<LimitValue> checkExistedHoldOperations(LimitRequest request,
-                                                       Map<String, Long> limitNamesMap,
-                                                       OperationState state) throws TException {
+    private List<LimitValue> checkExistedHoldOperations(LimitRequest request,
+                                                        Map<String, Long> limitNamesMap,
+                                                        OperationState state) throws TException {
         Set<String> limitNames = limitNamesMap.keySet();
         var existedHoldOperations =
                 operationStateHistoryDao.getHoldLimitValues(limitNames, request.getOperationId());
@@ -92,18 +92,14 @@ public class LimitOperationsHistoryService {
     }
 
     // The commit value must be less than the hold
-    public void checkCommitValueCorrectness(LimitRequest request,
-                                            List<LimitValue> existedHoldOperations,
-                                            Map<String, Long> limitNamesMap,
-                                                       OperationState state) throws TException {
+    private void checkCommitValueCorrectness(LimitRequest request,
+                                             List<LimitValue> existedHoldOperations,
+                                             Map<String, Long> limitNamesMap,
+                                             OperationState state) throws TException {
         Map<String, Long> valuesMap = existedHoldOperations.stream()
                 .collect(Collectors.toMap(LimitValue::getLimitName, LimitValue::getOperationValue));
         Optional<LimitChange> incorrectComitValue = request.getLimitChanges().stream()
-                .filter(change -> {
-                    Long holdValue = valuesMap.get(change.getLimitName());
-                    long commitValue = change.getValue();
-                    return Math.abs(holdValue) < Math.abs(commitValue);
-                })
+                .filter(change -> compareHoldCommitValues(valuesMap, change))
                 .findAny();
         if (incorrectComitValue.isPresent()) {
             log.error("[{}] Received incorrect commit value - hold is less than commit (existed size: {}, " +
@@ -111,5 +107,11 @@ public class LimitOperationsHistoryService {
                     limitNamesMap.keySet().size(), request);
             throw new OperationNotFound();
         }
+    }
+
+    private boolean compareHoldCommitValues(Map<String, Long> valuesMap, LimitChange change) {
+        Long holdValue = valuesMap.get(change.getLimitName());
+        long commitValue = change.getValue();
+        return Math.abs(holdValue) < Math.abs(commitValue);
     }
 }
