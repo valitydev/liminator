@@ -83,7 +83,7 @@ class LiminatorServiceTest {
     }
 
     @Test
-    void commitLessThanHoldTest() throws TException {
+    void commitLessThanHoldPart1Test() throws TException {
         String limitName = "TestLimitCommit";
         String operationId = "Op-123";
         LimitRequest holdRequest = new LimitRequest()
@@ -107,6 +107,60 @@ class LiminatorServiceTest {
         LimitResponse response = limitsAfterCommit.stream().findFirst().get();
         assertEquals(300L, response.getCommitValue());
         assertEquals(300L, response.getTotalValue());
+    }
+
+    @Test
+    void commitLessThanHoldPart2Test() throws TException {
+        String limitName = "TestLimitCommit";
+        String operationId = "Op-123";
+        LimitRequest holdRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(new LimitChange(limitName, -1000L)));
+        liminatorService.hold(holdRequest);
+
+        List<LimitResponse> limitsBeforeCommit = liminatorService.getLastLimitsValues(List.of(limitName));
+        assertNotNull(limitsBeforeCommit);
+        LimitResponse responseBeforeCommit = limitsBeforeCommit.stream().findFirst().get();
+        assertEquals(-1000L, responseBeforeCommit.getTotalValue());
+        assertEquals(0, responseBeforeCommit.getCommitValue());
+
+        LimitRequest commitRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(new LimitChange(limitName, -800L)));
+        liminatorService.commit(commitRequest);
+
+        List<LimitResponse> limitsAfterCommit = liminatorService.getLastLimitsValues(List.of(limitName));
+        assertNotNull(limitsAfterCommit);
+        LimitResponse response = limitsAfterCommit.stream().findFirst().get();
+        assertEquals(-800L, response.getCommitValue());
+        assertEquals(-800L, response.getTotalValue());
+    }
+
+    @Test
+    void commitLessThanHoldPart3Test() throws TException {
+        String limitName = "TestLimitCommit";
+        String operationId = "Op-123";
+        LimitRequest holdRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(new LimitChange(limitName, -1000L)));
+        liminatorService.hold(holdRequest);
+
+        List<LimitResponse> limitsBeforeCommit = liminatorService.getLastLimitsValues(List.of(limitName));
+        assertNotNull(limitsBeforeCommit);
+        LimitResponse responseBeforeCommit = limitsBeforeCommit.stream().findFirst().get();
+        assertEquals(-1000L, responseBeforeCommit.getTotalValue());
+        assertEquals(0, responseBeforeCommit.getCommitValue());
+
+        LimitRequest commitRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(new LimitChange(limitName, -1000L)));
+        liminatorService.commit(commitRequest);
+
+        List<LimitResponse> limitsAfterCommit = liminatorService.getLastLimitsValues(List.of(limitName));
+        assertNotNull(limitsAfterCommit);
+        LimitResponse response = limitsAfterCommit.stream().findFirst().get();
+        assertEquals(-1000L, response.getCommitValue());
+        assertEquals(-1000L, response.getTotalValue());
     }
 
     @Test
