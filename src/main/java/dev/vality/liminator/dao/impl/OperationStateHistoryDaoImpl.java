@@ -108,8 +108,8 @@ public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
                         LIMIT_DATA.LIMIT_ID,
                         LIMIT_DATA.NAME,
                         DSL.sum(DSL.when(
-                                DSL.coalesce(commitOps.OPERATION_VALUE, 0).greaterThan(0)
-                                        .or(DSL.coalesce(rollbackOps.OPERATION_VALUE, 0).greaterThan(0)), zero)
+                                DSL.coalesce(commitOps.OPERATION_VALUE, 0).notEqual(0)
+                                        .or(DSL.coalesce(rollbackOps.OPERATION_VALUE, 0).notEqual(0)), zero)
                                         .otherwise(DSL.coalesce(holdOps.OPERATION_VALUE, 0).cast(Long.class))
                                 ).cast(Long.class),
                         DSL.sum(DSL.coalesce(commitOps.OPERATION_VALUE, 0).cast(Long.class))
