@@ -1,7 +1,7 @@
 package dev.vality.liminator.service;
 
-import dev.vality.liminator.config.PostgresqlSpringBootITest;
 import dev.vality.liminator.*;
+import dev.vality.liminator.config.PostgresqlSpringBootITest;
 import org.apache.thrift.TException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,11 +60,11 @@ class LiminatorServiceTest {
     void limitNotFoundTest() {
         String limitName = "TestLimitCommit";
         String operationId = "Op-123";
-        LimitRequest holdRequest = new LimitRequest()
+        LimitRequest request = new LimitRequest()
                 .setOperationId(operationId)
                 .setLimitChanges(List.of(new LimitChange(limitName, 500L)));
 
-        assertThrows(LimitNotFound.class, () -> liminatorService.rollback(holdRequest));
+        assertThrows(LimitNotFound.class, () -> liminatorService.rollback(request));
     }
 
     @Test
@@ -397,6 +397,171 @@ class LiminatorServiceTest {
         assertEquals(500, thirdLimitResponseAfterCommit.getTotalValue());
         assertEquals(500, thirdLimitResponseAfterCommit.getCommitValue());
 
+    }
+
+    @Test
+    void commitWithAlreadyExistedCommitWithSameValueTest() throws TException {
+        String firstLimitName = "TestLimit1";
+        String secondLimitName = "TestLimit2";
+        String operationId = "Op-123";
+        LimitRequest holdRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(
+                        new LimitChange(firstLimitName, 500L),
+                        new LimitChange(secondLimitName, 500L)
+                ));
+
+        liminatorService.hold(holdRequest);
+
+        LimitRequest commitRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(
+                        new LimitChange(firstLimitName, 500L),
+                        new LimitChange(secondLimitName, 500L)
+                ));
+
+        liminatorService.commit(commitRequest);
+
+        LimitRequest newCommitRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(
+                        new LimitChange(firstLimitName, 500L),
+                        new LimitChange(secondLimitName, 500L)
+                ));
+
+        assertDoesNotThrow(() -> liminatorService.commit(newCommitRequest));
+    }
+
+    @Test
+    void rollbackWithAlreadyExistedCommitTest() throws TException {
+        String firstLimitName = "TestLimit1";
+        String secondLimitName = "TestLimit2";
+        String operationId = "Op-123";
+        LimitRequest holdRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(
+                        new LimitChange(firstLimitName, 500L),
+                        new LimitChange(secondLimitName, 500L)
+                ));
+
+        liminatorService.hold(holdRequest);
+
+        LimitRequest commitRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(
+                        new LimitChange(firstLimitName, 500L),
+                        new LimitChange(secondLimitName, 500L)
+                ));
+
+        liminatorService.commit(commitRequest);
+
+        LimitRequest rollbackRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(
+                        new LimitChange(firstLimitName, 500L),
+                        new LimitChange(secondLimitName, 500L)
+                ));
+
+        assertThrows(OperationNotFound.class, () -> liminatorService.rollback(rollbackRequest));
+    }
+
+    @Test
+    void commitWithAlreadyExistedCommitWithDifferentValueTest() throws TException {
+        String firstLimitName = "TestLimit1";
+        String secondLimitName = "TestLimit2";
+        String operationId = "Op-123";
+        LimitRequest holdRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(
+                        new LimitChange(firstLimitName, 500L),
+                        new LimitChange(secondLimitName, 500L)
+                ));
+
+        liminatorService.hold(holdRequest);
+
+        LimitRequest commitRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(
+                        new LimitChange(firstLimitName, 500L),
+                        new LimitChange(secondLimitName, 500L)
+                ));
+
+        liminatorService.commit(commitRequest);
+
+        LimitRequest newCommitRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(
+                        new LimitChange(firstLimitName, 1000L),
+                        new LimitChange(secondLimitName, 1000L)
+                ));
+
+        assertThrows(OperationNotFound.class, () -> liminatorService.commit(newCommitRequest));
+    }
+
+    @Test
+    void commitWithAlreadyExistedRollbackTest() throws TException {
+        String firstLimitName = "TestLimit1";
+        String secondLimitName = "TestLimit2";
+        String operationId = "Op-123";
+        LimitRequest holdRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(
+                        new LimitChange(firstLimitName, 500L),
+                        new LimitChange(secondLimitName, 500L)
+                ));
+
+        liminatorService.hold(holdRequest);
+
+        LimitRequest commitRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(
+                        new LimitChange(firstLimitName, 500L),
+                        new LimitChange(secondLimitName, 500L)
+                ));
+
+        liminatorService.rollback(commitRequest);
+
+        LimitRequest rollbackRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(
+                        new LimitChange(firstLimitName, 500L),
+                        new LimitChange(secondLimitName, 500L)
+                ));
+
+        assertThrows(OperationNotFound.class, () -> liminatorService.commit(rollbackRequest));
+    }
+
+    @Test
+    void rollbackWithAlreadyExistedRollbackTest() throws TException {
+        String firstLimitName = "TestLimit1";
+        String secondLimitName = "TestLimit2";
+        String operationId = "Op-123";
+        LimitRequest holdRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(
+                        new LimitChange(firstLimitName, 500L),
+                        new LimitChange(secondLimitName, 500L)
+                ));
+
+        liminatorService.hold(holdRequest);
+
+        LimitRequest rollbackRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(
+                        new LimitChange(firstLimitName, 500L),
+                        new LimitChange(secondLimitName, 500L)
+                ));
+
+        liminatorService.rollback(rollbackRequest);
+
+        LimitRequest newRollbackRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(
+                        new LimitChange(firstLimitName, 500L),
+                        new LimitChange(secondLimitName, 500L)
+                ));
+
+        assertDoesNotThrow(() -> liminatorService.rollback(newRollbackRequest));
     }
 
     private LimitResponse getLimitResponseByLimitName(List<LimitResponse> response, String limitName) {

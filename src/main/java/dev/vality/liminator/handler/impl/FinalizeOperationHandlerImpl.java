@@ -1,12 +1,12 @@
 package dev.vality.liminator.handler.impl;
 
+import dev.vality.liminator.LimitRequest;
+import dev.vality.liminator.OperationNotFound;
 import dev.vality.liminator.domain.enums.OperationState;
 import dev.vality.liminator.domain.tables.pojos.LimitData;
 import dev.vality.liminator.handler.FinalizeOperationHandler;
 import dev.vality.liminator.service.LimitDataService;
 import dev.vality.liminator.service.LimitOperationsHistoryService;
-import dev.vality.liminator.LimitRequest;
-import dev.vality.liminator.OperationNotFound;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.thrift.TException;
@@ -32,6 +32,29 @@ public class FinalizeOperationHandlerImpl implements FinalizeOperationHandler {
     @Override
     public void handle(LimitRequest request, OperationState state) throws TException {
         Map<String, Long> limitNamesMap = getLimitDataMap(request, state.getLiteral());
+        var existedFinalOperations = limitOperationsHistoryService.getExistedFinalOperations(request, limitNamesMap);
+        if (!existedFinalOperations.isEmpty()) {
+            OperationState existedFinalState = existedFinalOperations.get(0).getState();
+            // It is OK if limit from the pool already had a final state,
+            // and we get same final state again
+            if (existedFinalState == state) {
+                log.info("[{}] Operation already in {} state", state.getLiteral(), existedFinalState.getLiteral());
+                if (state == COMMIT) {
+                    limitOperationsHistoryService.checkNewCommitValuesCorrectness(
+                            request,
+                            existedFinalOperations,
+                            limitNamesMap,
+                            state
+                    );
+                }
+                return;
+            } else {
+                log.error("[{}] Received operation's state with ID {} does not match with existed state {} " +
+                                "(request: {})",
+                        state.getLiteral(), request.getOperationId(), existedFinalState, request);
+                throw new OperationNotFound();
+            }
+        }
         limitOperationsHistoryService.checkCorrectnessFinalizingOperation(request, limitNamesMap, state);
         if (!List.of(COMMIT, ROLLBACK).contains(state)) {
             throw new TException();
