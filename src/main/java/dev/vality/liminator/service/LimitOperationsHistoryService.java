@@ -9,13 +9,13 @@ import dev.vality.liminator.domain.enums.OperationState;
 import dev.vality.liminator.domain.tables.pojos.OperationStateHistory;
 import dev.vality.liminator.model.CurrentLimitValue;
 import dev.vality.liminator.model.LimitValue;
+import dev.vality.liminator.util.StreamUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.thrift.TException;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static dev.vality.liminator.domain.enums.OperationState.COMMIT;
 import static dev.vality.liminator.domain.enums.OperationState.ROLLBACK;
@@ -52,9 +52,11 @@ public class LimitOperationsHistoryService {
 
     public List<OperationStateHistory> getExistedFinalOperations(LimitRequest request,
                                                                  Map<String, Long> limitNamesMap) {
-        String operationId = request.getOperationId();
-        var limitIds = limitNamesMap.values();
-        return operationStateHistoryDao.get(operationId, limitIds, List.of(COMMIT, ROLLBACK));
+        return operationStateHistoryDao.get(
+                request.getOperationId(),
+                limitNamesMap.values(),
+                List.of(COMMIT, ROLLBACK)
+        );
     }
 
     public void checkCorrectnessFinalizingOperation(LimitRequest request,
@@ -111,10 +113,7 @@ public class LimitOperationsHistoryService {
                                                 List<OperationStateHistory> existedCommitOperations,
                                                 Map<String, Long> limitNamesMap,
                                                 OperationState state) throws TException {
-        Map<Long, String> limitIdsMap =
-                limitNamesMap.entrySet()
-                        .stream()
-                        .collect(toMap(Map.Entry::getValue, Map.Entry::getKey));
+        Map<Long, String> limitIdsMap = StreamUtils.getInversedMap(limitNamesMap);
         Map<String, Long> existedCommitValuesMap = existedCommitOperations.stream()
                 .collect(toMap(op -> limitIdsMap.get(op.getLimitDataId()), OperationStateHistory::getOperationValue));
         Optional<LimitChange> incorrectCommitValue = request.getLimitChanges().stream()

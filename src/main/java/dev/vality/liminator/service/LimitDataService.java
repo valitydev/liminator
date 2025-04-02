@@ -37,21 +37,21 @@ public class LimitDataService {
     private final LimitDataDao limitDataDao;
     private final LimitContextDao limitContextDao;
 
-    public List<LimitData> get(LimitRequest request, String state) throws TException {
+    public List<LimitData> get(LimitRequest request, String source) throws TException {
         List<String> limitNames = request.getLimitChanges().stream()
                 .map(LimitChange::getLimitName)
                 .toList();
         List<LimitData> limitData = limitDataDao.get(limitNames);
         if (CollectionUtils.isEmpty(limitData)) {
-            log.error("[{}] Limits not found: {}", state, limitNames);
-            if (Objects.equals(state, ROLLBACK.getLiteral())) {
+            log.error("[{}] Limits not found: {}", source, limitNames);
+            if (Objects.equals(source, ROLLBACK.getLiteral())) {
                 throw new InvalidRequest();
             }
             throw new LimitNotFound();
         }
         if (limitData.size() != limitNames.size()) {
             log.error("[{}] Received limit ({}) size is not equal to expected ({}). " +
-                    "Probably one of limits doesn't exist", state, limitData.size(), limitNames.size());
+                    "Probably one of limits doesn't exist", source, limitData.size(), limitNames.size());
             throw new LimitNotFound();
         }
         return limitData;

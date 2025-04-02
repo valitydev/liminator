@@ -4,6 +4,7 @@ import dev.vality.liminator.LimitRequest;
 import dev.vality.liminator.OperationNotFound;
 import dev.vality.liminator.domain.enums.OperationState;
 import dev.vality.liminator.domain.tables.pojos.LimitData;
+import dev.vality.liminator.domain.tables.pojos.OperationStateHistory;
 import dev.vality.liminator.handler.FinalizeOperationHandler;
 import dev.vality.liminator.service.LimitDataService;
 import dev.vality.liminator.service.LimitOperationsHistoryService;
@@ -34,27 +35,16 @@ public class FinalizeOperationHandlerImpl implements FinalizeOperationHandler {
         Map<String, Long> limitNamesMap = getLimitDataMap(request, state.getLiteral());
         var existedFinalOperations = limitOperationsHistoryService.getExistedFinalOperations(request, limitNamesMap);
         if (!existedFinalOperations.isEmpty()) {
-            OperationState existedFinalState = existedFinalOperations.get(0).getState();
-            // It is OK if limit from the pool already had a final state,
-            // and we get same final state again
-            if (existedFinalState == state) {
-                log.info("[{}] Operation already in {} state (request={})",
-                        state.getLiteral(), existedFinalState.getLiteral(), request);
-                if (state == COMMIT) {
-                    limitOperationsHistoryService.checkNewCommitValuesCorrectness(
-                            request,
-                            existedFinalOperations,
-                            limitNamesMap,
-                            state
-                    );
-                }
-                return;
-            } else {
-                log.error("[{}] Received operation's state with ID {} does not match with existed state {} " +
-                                "(request: {})",
-                        state.getLiteral(), request.getOperationId(), existedFinalState, request);
-                throw new OperationNotFound();
-            }
+            OperationState existedFinalState = existedFinalOperations.stream()
+                    .findFirst()
+                    .get()
+                    .getState();
+            handleExistedFinalState(
+                    existedFinalState, state, request,
+                    existedFinalOperations,
+                    limitNamesMap
+            );
+            return;
         }
         limitOperationsHistoryService.checkCorrectnessFinalizingOperation(request, limitNamesMap, state);
         if (!List.of(COMMIT, ROLLBACK).contains(state)) {
@@ -64,13 +54,39 @@ public class FinalizeOperationHandlerImpl implements FinalizeOperationHandler {
         checkUpdatedOperationsConsistency(request, state, counts.length);
     }
 
-    private HashMap<String, Long> getLimitDataMap(LimitRequest request, String state) throws TException {
+    private HashMap<String, Long> getLimitDataMap(LimitRequest request, String source) throws TException {
         var limitNamesMap = new HashMap<String, Long>();
-        List<LimitData> limitDataList = limitDataService.get(request, state);
+        List<LimitData> limitDataList = limitDataService.get(request, source);
         for (LimitData limitData : limitDataList) {
             limitNamesMap.put(limitData.getName(), limitData.getId());
         }
         return limitNamesMap;
+    }
+
+    // It is OK if limit from the pool already had a final state,
+    // and we get same final state again
+    private void handleExistedFinalState(OperationState existedFinalState,
+                                         OperationState state,
+                                         LimitRequest request,
+                                         List<OperationStateHistory> existedFinalOperations,
+                                         Map<String, Long> limitNamesMap) throws TException {
+        if (existedFinalState == state) {
+            log.info("[{}] Operation already in {} state (request={})",
+                    state.getLiteral(), existedFinalState.getLiteral(), request);
+            if (state == COMMIT) {
+                limitOperationsHistoryService.checkNewCommitValuesCorrectness(
+                        request,
+                        existedFinalOperations,
+                        limitNamesMap,
+                        state
+                );
+            }
+        } else {
+            log.error("[{}] Received operation's state with ID {} does not match with existed state {} " +
+                            "(request: {})",
+                    state.getLiteral(), request.getOperationId(), existedFinalState, request);
+            throw new OperationNotFound();
+        }
     }
 
     private void checkUpdatedOperationsConsistency(LimitRequest request,
