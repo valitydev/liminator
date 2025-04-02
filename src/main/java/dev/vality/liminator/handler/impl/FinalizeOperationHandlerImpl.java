@@ -38,7 +38,8 @@ public class FinalizeOperationHandlerImpl implements FinalizeOperationHandler {
             // It is OK if limit from the pool already had a final state,
             // and we get same final state again
             if (existedFinalState == state) {
-                log.info("[{}] Operation already in {} state", state.getLiteral(), existedFinalState.getLiteral());
+                log.info("[{}] Operation already in {} state (request={})",
+                        state.getLiteral(), existedFinalState.getLiteral(), request);
                 if (state == COMMIT) {
                     limitOperationsHistoryService.checkNewCommitValuesCorrectness(
                             request,
@@ -63,9 +64,9 @@ public class FinalizeOperationHandlerImpl implements FinalizeOperationHandler {
         checkUpdatedOperationsConsistency(request, state, counts.length);
     }
 
-    private HashMap<String, Long> getLimitDataMap(LimitRequest request, String source) throws TException {
+    private HashMap<String, Long> getLimitDataMap(LimitRequest request, String state) throws TException {
         var limitNamesMap = new HashMap<String, Long>();
-        List<LimitData> limitDataList = limitDataService.get(request, source);
+        List<LimitData> limitDataList = limitDataService.get(request, state);
         for (LimitData limitData : limitDataList) {
             limitNamesMap.put(limitData.getName(), limitData.getId());
         }

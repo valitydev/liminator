@@ -64,7 +64,7 @@ class LiminatorServiceTest {
                 .setOperationId(operationId)
                 .setLimitChanges(List.of(new LimitChange(limitName, 500L)));
 
-        assertThrows(LimitNotFound.class, () -> liminatorService.rollback(request));
+        assertThrows(LimitNotFound.class, () -> liminatorService.commit(request));
     }
 
     @Test
@@ -563,6 +563,23 @@ class LiminatorServiceTest {
 
         assertDoesNotThrow(() -> liminatorService.rollback(newRollbackRequest));
     }
+
+    @Test
+    void rollbackWithNotExistedHoldTest() {
+        String firstLimitName = "TestLimit1";
+        String secondLimitName = "TestLimit2";
+        String operationId = "Op-123";
+
+        LimitRequest rollbackRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(
+                        new LimitChange(firstLimitName, 500L),
+                        new LimitChange(secondLimitName, 500L)
+                ));
+
+        assertThrows(InvalidRequest.class, () -> liminatorService.rollback(rollbackRequest));
+    }
+
 
     private LimitResponse getLimitResponseByLimitName(List<LimitResponse> response, String limitName) {
         return response.stream()
