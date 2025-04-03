@@ -1,14 +1,15 @@
 package dev.vality.liminator.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.vality.liminator.InvalidRequest;
+import dev.vality.liminator.LimitChange;
+import dev.vality.liminator.LimitNotFound;
+import dev.vality.liminator.LimitRequest;
 import dev.vality.liminator.dao.LimitContextDao;
 import dev.vality.liminator.dao.LimitDataDao;
 import dev.vality.liminator.domain.tables.pojos.LimitContext;
 import dev.vality.liminator.domain.tables.pojos.LimitData;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.vality.liminator.LimitChange;
-import dev.vality.liminator.LimitNotFound;
-import dev.vality.liminator.LimitRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.thrift.TException;
@@ -20,6 +21,9 @@ import org.springframework.util.CollectionUtils;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+
+import static dev.vality.liminator.domain.enums.OperationState.ROLLBACK;
 
 @Slf4j
 @Service
@@ -40,6 +44,9 @@ public class LimitDataService {
         List<LimitData> limitData = limitDataDao.get(limitNames);
         if (CollectionUtils.isEmpty(limitData)) {
             log.error("[{}] Limits not found: {}", source, limitNames);
+            if (Objects.equals(source, ROLLBACK.getLiteral())) {
+                throw new InvalidRequest();
+            }
             throw new LimitNotFound();
         }
         if (limitData.size() != limitNames.size()) {

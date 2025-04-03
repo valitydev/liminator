@@ -1,23 +1,25 @@
 package dev.vality.liminator.service;
 
 import dev.vality.liminator.LimitChange;
+import dev.vality.liminator.LimitRequest;
+import dev.vality.liminator.OperationNotFound;
 import dev.vality.liminator.converter.OperationStateHistoryConverter;
 import dev.vality.liminator.dao.OperationStateHistoryDao;
 import dev.vality.liminator.domain.enums.OperationState;
 import dev.vality.liminator.domain.tables.pojos.OperationStateHistory;
 import dev.vality.liminator.model.CurrentLimitValue;
-import dev.vality.liminator.LimitRequest;
-import dev.vality.liminator.OperationNotFound;
 import dev.vality.liminator.model.LimitValue;
+import dev.vality.liminator.util.StreamUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.thrift.TException;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
-import static dev.vality.liminator.domain.enums.OperationState.*;
+import static dev.vality.liminator.domain.enums.OperationState.COMMIT;
+import static dev.vality.liminator.domain.enums.OperationState.ROLLBACK;
+import static java.util.stream.Collectors.toMap;
 
 @Slf4j
 @Service
@@ -48,31 +50,22 @@ public class LimitOperationsHistoryService {
         return operationStateHistoryDao.get(operationId, limitIds, states);
     }
 
+    public List<OperationStateHistory> getExistedFinalOperations(LimitRequest request,
+                                                                 Map<String, Long> limitNamesMap) {
+        return operationStateHistoryDao.get(
+                request.getOperationId(),
+                limitNamesMap.values(),
+                List.of(COMMIT, ROLLBACK)
+        );
+    }
+
     public void checkCorrectnessFinalizingOperation(LimitRequest request,
                                                     Map<String, Long> limitNamesMap,
                                                     OperationState state) throws TException {
-        checkExistedFinalOperations(request, limitNamesMap, state);
         var existedHoldOperations = checkExistedHoldOperations(request, limitNamesMap, state);
         if (state == COMMIT) {
             checkCommitValueCorrectness(request, existedHoldOperations, limitNamesMap, state);
         }
-    }
-
-    // The operation for the limit is always unique. If some limit from the pool already had a final value,
-    // then we will fail the entire pack
-    private List<OperationStateHistory> checkExistedFinalOperations(LimitRequest request,
-                                                                    Map<String, Long> limitNamesMap,
-                                                                    OperationState state) throws TException {
-        String operationId = request.getOperationId();
-        var limitIds = limitNamesMap.values();
-        var existedFinalOperations =
-                operationStateHistoryDao.get(operationId, limitIds, List.of(COMMIT, ROLLBACK));
-        if (existedFinalOperations.size() > 0) {
-            log.error("[{}] Existed hold operations with ID {} not found (request: {})",
-                    state.getLiteral(), operationId, request);
-            throw new OperationNotFound();
-        }
-        return existedFinalOperations;
     }
 
     // For each finalizing operation, there must be a hold operation
@@ -97,11 +90,11 @@ public class LimitOperationsHistoryService {
                                              Map<String, Long> limitNamesMap,
                                              OperationState state) throws TException {
         Map<String, Long> valuesMap = existedHoldOperations.stream()
-                .collect(Collectors.toMap(LimitValue::getLimitName, LimitValue::getOperationValue));
-        Optional<LimitChange> incorrectComitValue = request.getLimitChanges().stream()
-                .filter(change -> compareHoldCommitValues(valuesMap, change))
+                .collect(toMap(LimitValue::getLimitName, LimitValue::getOperationValue));
+        Optional<LimitChange> incorrectCommitValue = request.getLimitChanges().stream()
+                .filter(change -> isIncorrectCommitValue(valuesMap, change))
                 .findAny();
-        if (incorrectComitValue.isPresent()) {
+        if (incorrectCommitValue.isPresent()) {
             log.error("[{}] Received incorrect commit value - hold is less than commit (existed size: {}, " +
                             "expected size: {}, request: {})", state.getLiteral(), existedHoldOperations,
                     limitNamesMap.keySet().size(), request);
@@ -109,9 +102,34 @@ public class LimitOperationsHistoryService {
         }
     }
 
-    private boolean compareHoldCommitValues(Map<String, Long> valuesMap, LimitChange change) {
+    private boolean isIncorrectCommitValue(Map<String, Long> valuesMap, LimitChange change) {
         Long holdValue = valuesMap.get(change.getLimitName());
         long commitValue = change.getValue();
         return Math.abs(holdValue) < Math.abs(commitValue);
+    }
+
+    // The new commit value must be equal existed commit value
+    public void checkNewCommitValuesCorrectness(LimitRequest request,
+                                                List<OperationStateHistory> existedCommitOperations,
+                                                Map<String, Long> limitNamesMap,
+                                                OperationState state) throws TException {
+        Map<Long, String> limitIdsMap = StreamUtils.getInversedMap(limitNamesMap);
+        Map<String, Long> existedCommitValuesMap = existedCommitOperations.stream()
+                .collect(toMap(op -> limitIdsMap.get(op.getLimitDataId()), OperationStateHistory::getOperationValue));
+        Optional<LimitChange> incorrectCommitValue = request.getLimitChanges().stream()
+                .filter(change -> isIncorrectNewCommitValue(existedCommitValuesMap, change))
+                .findAny();
+        if (incorrectCommitValue.isPresent()) {
+            log.error("[{}] Received incorrect commit value - existed commit value is not equal to new commit value " +
+                            "( request: {})",
+                    state.getLiteral(), request);
+            throw new OperationNotFound();
+        }
+    }
+
+    private boolean isIncorrectNewCommitValue(Map<String, Long> existedCommitValuesMap, LimitChange change) {
+        Long existedCommitValue = existedCommitValuesMap.get(change.getLimitName());
+        long commitValue = change.getValue();
+        return Math.abs(existedCommitValue) != Math.abs(commitValue);
     }
 }

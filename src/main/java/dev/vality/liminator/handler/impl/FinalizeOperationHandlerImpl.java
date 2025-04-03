@@ -1,12 +1,13 @@
 package dev.vality.liminator.handler.impl;
 
+import dev.vality.liminator.LimitRequest;
+import dev.vality.liminator.OperationNotFound;
 import dev.vality.liminator.domain.enums.OperationState;
 import dev.vality.liminator.domain.tables.pojos.LimitData;
+import dev.vality.liminator.domain.tables.pojos.OperationStateHistory;
 import dev.vality.liminator.handler.FinalizeOperationHandler;
 import dev.vality.liminator.service.LimitDataService;
 import dev.vality.liminator.service.LimitOperationsHistoryService;
-import dev.vality.liminator.LimitRequest;
-import dev.vality.liminator.OperationNotFound;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.thrift.TException;
@@ -32,12 +33,12 @@ public class FinalizeOperationHandlerImpl implements FinalizeOperationHandler {
     @Override
     public void handle(LimitRequest request, OperationState state) throws TException {
         Map<String, Long> limitNamesMap = getLimitDataMap(request, state.getLiteral());
-        limitOperationsHistoryService.checkCorrectnessFinalizingOperation(request, limitNamesMap, state);
-        if (!List.of(COMMIT, ROLLBACK).contains(state)) {
-            throw new TException();
+        var existedFinalOperations = limitOperationsHistoryService.getExistedFinalOperations(request, limitNamesMap);
+        if (existedFinalOperations.isEmpty()) {
+            handleNewOperation(request, state, limitNamesMap);
+        } else {
+            handleFinalOperation(state, request, existedFinalOperations, limitNamesMap);
         }
-        int[] counts = limitOperationsHistoryService.writeOperations(request, state, limitNamesMap);
-        checkUpdatedOperationsConsistency(request, state, counts.length);
     }
 
     private HashMap<String, Long> getLimitDataMap(LimitRequest request, String source) throws TException {
@@ -47,6 +48,46 @@ public class FinalizeOperationHandlerImpl implements FinalizeOperationHandler {
             limitNamesMap.put(limitData.getName(), limitData.getId());
         }
         return limitNamesMap;
+    }
+
+    private void handleNewOperation(LimitRequest request,
+                                    OperationState state,
+                                    Map<String, Long> limitNamesMap) throws TException {
+        limitOperationsHistoryService.checkCorrectnessFinalizingOperation(request, limitNamesMap, state);
+        if (!List.of(COMMIT, ROLLBACK).contains(state)) {
+            throw new TException();
+        }
+        int[] counts = limitOperationsHistoryService.writeOperations(request, state, limitNamesMap);
+        checkUpdatedOperationsConsistency(request, state, counts.length);
+    }
+
+    // It is OK if limit from the pool already had a final state,
+    // and we get same final state again
+    private void handleFinalOperation(OperationState state,
+                                      LimitRequest request,
+                                      List<OperationStateHistory> existedFinalOperations,
+                                      Map<String, Long> limitNamesMap) throws TException {
+        OperationState existedFinalState = existedFinalOperations.stream()
+                .findFirst()
+                .get()
+                .getState();
+        if (existedFinalState == state) {
+            log.info("[{}] Operation already in {} state (request={})",
+                    state.getLiteral(), existedFinalState.getLiteral(), request);
+            if (state == COMMIT) {
+                limitOperationsHistoryService.checkNewCommitValuesCorrectness(
+                        request,
+                        existedFinalOperations,
+                        limitNamesMap,
+                        state
+                );
+            }
+        } else {
+            log.error("[{}] Received operation's state with ID {} does not match with existed state {} " +
+                            "(request: {})",
+                    state.getLiteral(), request.getOperationId(), existedFinalState, request);
+            throw new OperationNotFound();
+        }
     }
 
     private void checkUpdatedOperationsConsistency(LimitRequest request,

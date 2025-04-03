@@ -173,7 +173,7 @@
         <dependency>
             <groupId>dev.vality</groupId>
             <artifactId>liminator-proto</artifactId>
-            <version>1.7-3870a39</version>
+            <version>1.8-d63ded1</version>
         </dependency>
         <dependency>
             <groupId>dev.vality.woody</groupId>
@@ -396,6 +396,13 @@
                     <nonFilteredFileExtensions>
                         <nonFilteredFileExtension>p12</nonFilteredFileExtension>
                     </nonFilteredFileExtensions>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
                 </configuration>
             </plugin>
         </plugins>
