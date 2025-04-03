@@ -34,24 +34,11 @@ public class FinalizeOperationHandlerImpl implements FinalizeOperationHandler {
     public void handle(LimitRequest request, OperationState state) throws TException {
         Map<String, Long> limitNamesMap = getLimitDataMap(request, state.getLiteral());
         var existedFinalOperations = limitOperationsHistoryService.getExistedFinalOperations(request, limitNamesMap);
-        if (!existedFinalOperations.isEmpty()) {
-            OperationState existedFinalState = existedFinalOperations.stream()
-                    .findFirst()
-                    .get()
-                    .getState();
-            handleExistedFinalState(
-                    existedFinalState, state, request,
-                    existedFinalOperations,
-                    limitNamesMap
-            );
-            return;
+        if (existedFinalOperations.isEmpty()) {
+            handleNewOperation(request, state, limitNamesMap);
+        } else {
+            handleFinalOperation(state, request, existedFinalOperations, limitNamesMap);
         }
-        limitOperationsHistoryService.checkCorrectnessFinalizingOperation(request, limitNamesMap, state);
-        if (!List.of(COMMIT, ROLLBACK).contains(state)) {
-            throw new TException();
-        }
-        int[] counts = limitOperationsHistoryService.writeOperations(request, state, limitNamesMap);
-        checkUpdatedOperationsConsistency(request, state, counts.length);
     }
 
     private HashMap<String, Long> getLimitDataMap(LimitRequest request, String source) throws TException {
@@ -63,13 +50,27 @@ public class FinalizeOperationHandlerImpl implements FinalizeOperationHandler {
         return limitNamesMap;
     }
 
+    private void handleNewOperation(LimitRequest request,
+                                    OperationState state,
+                                    Map<String, Long> limitNamesMap) throws TException {
+        limitOperationsHistoryService.checkCorrectnessFinalizingOperation(request, limitNamesMap, state);
+        if (!List.of(COMMIT, ROLLBACK).contains(state)) {
+            throw new TException();
+        }
+        int[] counts = limitOperationsHistoryService.writeOperations(request, state, limitNamesMap);
+        checkUpdatedOperationsConsistency(request, state, counts.length);
+    }
+
     // It is OK if limit from the pool already had a final state,
     // and we get same final state again
-    private void handleExistedFinalState(OperationState existedFinalState,
-                                         OperationState state,
-                                         LimitRequest request,
-                                         List<OperationStateHistory> existedFinalOperations,
-                                         Map<String, Long> limitNamesMap) throws TException {
+    private void handleFinalOperation(OperationState state,
+                                      LimitRequest request,
+                                      List<OperationStateHistory> existedFinalOperations,
+                                      Map<String, Long> limitNamesMap) throws TException {
+        OperationState existedFinalState = existedFinalOperations.stream()
+                .findFirst()
+                .get()
+                .getState();
         if (existedFinalState == state) {
             log.info("[{}] Operation already in {} state (request={})",
                     state.getLiteral(), existedFinalState.getLiteral(), request);
