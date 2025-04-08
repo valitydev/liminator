@@ -9,7 +9,7 @@ import org.apache.thrift.TException;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.mock.mockito.SpyBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import java.util.List;
 
@@ -21,7 +21,7 @@ class TransactionVisibilityTest extends AbstractIntegrationTestWithEmbeddedPostg
     @Autowired
     private LiminatorService liminatorService;
 
-    @SpyBean
+    @MockitoSpyBean
     private OperationStateHistoryDao operationStateHistoryDao;
 
     @Test

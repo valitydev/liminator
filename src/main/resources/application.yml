@@ -45,4 +45,4 @@ management:
 
 testcontainers:
   postgresql:
-    tag: '11.4'
+    tag: '17.4'
