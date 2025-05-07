@@ -11,7 +11,7 @@
     </parent>
 
     <artifactId>liminator</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <packaging>jar</packaging>
 
     <name>liminator</name>
@@ -193,7 +193,7 @@
         <dependency>
             <groupId>dev.vality.geck</groupId>
             <artifactId>serializer</artifactId>
-            <version>1.0.1</version>
+            <version>1.0.2</version>
         </dependency>
         <dependency>
             <groupId>dev.vality.geck</groupId>
