@@ -63,12 +63,12 @@ public class HoldOperationHandlerImpl implements HoldOperationHandler {
                 limitNamesMap.values(),
                 List.of(OperationState.HOLD)
         );
-        if (!CollectionUtils.isEmpty(existedHoldOperations)) {
-            log.error("[{}] DB already has operation with id {}: {}",
-                    LOG_PREFIX, operationId, existedHoldOperations);
-            return true;
+        if (CollectionUtils.isEmpty(existedHoldOperations)) {
+            return false;
         }
-        return false;
+        log.error("[{}] DB already has operation with id {}: {}",
+                LOG_PREFIX, operationId, existedHoldOperations);
+        return true;
     }
 
     private void checkExistedFinalizeOperations(Map<String, Long> limitNamesMap,
