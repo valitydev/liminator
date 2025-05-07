@@ -11,7 +11,7 @@
     </parent>
 
     <artifactId>liminator</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <packaging>jar</packaging>
 
     <name>liminator</name>
@@ -183,7 +183,7 @@
         <dependency>
             <groupId>dev.vality</groupId>
             <artifactId>limiter-proto</artifactId>
-            <version>1.33-31de59b</version>
+            <version>1.43-efeb7d4</version>
         </dependency>
         <dependency>
             <groupId>dev.vality</groupId>
