@@ -1,13 +1,13 @@
 package dev.vality.liminator.handler.impl;
 
+import dev.vality.liminator.LimitChange;
+import dev.vality.liminator.LimitRequest;
+import dev.vality.liminator.OperationAlreadyInFinalState;
 import dev.vality.liminator.domain.enums.OperationState;
 import dev.vality.liminator.domain.tables.pojos.LimitData;
 import dev.vality.liminator.handler.HoldOperationHandler;
 import dev.vality.liminator.service.LimitDataService;
 import dev.vality.liminator.service.LimitOperationsHistoryService;
-import dev.vality.liminator.LimitChange;
-import dev.vality.liminator.LimitRequest;
-import dev.vality.liminator.OperationAlreadyInFinalState;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.thrift.TException;
@@ -47,9 +47,28 @@ public class HoldOperationHandlerImpl implements HoldOperationHandler {
         }
         String operationId = request.getOperationId();
         checkExistedFinalizeOperations(limitNamesMap, operationId);
+        Boolean isAlreadyExistHoldOperations = isAlreadyExistHoldOperations(limitNamesMap, request.getOperationId());
+        if (Boolean.TRUE.equals(isAlreadyExistHoldOperations)) {
+            return;
+        }
         log.info("Save operation: {} with limits: {}", operationId, Arrays.toString(limitNamesMap.keySet().toArray()));
         int[] counts = limitOperationsHistoryService.writeOperations(request, OperationState.HOLD, limitNamesMap);
         log.info("Success saved operation: {} with {} limits", operationId, counts.length);
+    }
+
+    private Boolean isAlreadyExistHoldOperations(Map<String, Long> limitNamesMap,
+                                                 String operationId) throws TException {
+        var existedHoldOperations = limitOperationsHistoryService.get(
+                operationId,
+                limitNamesMap.values(),
+                List.of(OperationState.HOLD)
+        );
+        if (!CollectionUtils.isEmpty(existedHoldOperations)) {
+            log.error("[{}] DB already has operation with id {}: {}",
+                    LOG_PREFIX, operationId, existedHoldOperations);
+            return true;
+        }
+        return false;
     }
 
     private void checkExistedFinalizeOperations(Map<String, Long> limitNamesMap,

@@ -42,6 +42,24 @@ class LiminatorServiceTest {
     }
 
     @Test
+    void duplicateHoldOperationTest() throws TException {
+        String limitName = "TestLimitHold";
+        String operationId = "OpHold";
+        long limitValue = 500L;
+        LimitRequest holdRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(new LimitChange(limitName, limitValue)));
+
+        liminatorService.hold(holdRequest);
+
+        List<LimitResponse> limitResponses = liminatorService.hold(holdRequest);
+
+        assertEquals(1, limitResponses.size());
+        assertEquals(limitName, limitResponses.get(0).getLimitName());
+        assertEquals(limitValue, limitResponses.get(0).getTotalValue());
+    }
+
+    @Test
     void operationAlreadyFinaleStateTest() throws TException {
         String limitName = "TestLimitCommit";
         String operationId = "OpComit";
