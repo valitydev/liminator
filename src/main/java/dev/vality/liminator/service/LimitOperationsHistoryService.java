@@ -77,8 +77,8 @@ public class LimitOperationsHistoryService {
                 operationStateHistoryDao.getHoldLimitValues(limitNames, request.getOperationId());
         if (limitNames.size() != existedHoldOperations.size()) {
             log.error("[{}] Count of existed hold operations for limits is not equal to expected (existed size: {}, " +
-                            "expected size: {}, request: {})", state.getLiteral(), existedHoldOperations,
-                    limitNames.size(), request);
+                            "expected size: {}, existedHoldOperations: {}, request: {})", state.getLiteral(),
+                    existedHoldOperations.size(), existedHoldOperations, limitNames.size(), request);
             throw new OperationNotFound();
         }
         return existedHoldOperations;
