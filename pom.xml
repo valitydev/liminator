@@ -193,12 +193,10 @@
         <dependency>
             <groupId>dev.vality.geck</groupId>
             <artifactId>serializer</artifactId>
-            <version>1.0.2</version>
         </dependency>
         <dependency>
             <groupId>dev.vality.geck</groupId>
             <artifactId>filter</artifactId>
-            <version>1.0.2</version>
         </dependency>
 
         <!-- Test -->
@@ -210,7 +208,7 @@
         <dependency>
             <groupId>dev.vality</groupId>
             <artifactId>testcontainers-annotations</artifactId>
-            <version>3.1.1</version>
+            <version>3.3.2</version>
             <scope>test</scope>
         </dependency>
         <dependency>
