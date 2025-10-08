@@ -16,7 +16,7 @@ import java.util.List;
 
 import static dev.vality.liminator.domain.Tables.LIMIT_DATA;
 import static dev.vality.liminator.domain.Tables.OPERATION_STATE_HISTORY;
-import static org.jooq.impl.DSL.select;
+import static org.jooq.impl.DSL.*;
 
 @Component
 @RequiredArgsConstructor
@@ -64,10 +64,10 @@ public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
                         .on(OPERATION_STATE_HISTORY.LIMIT_DATA_ID.eq(LIMIT_DATA.ID))
                         .and(LIMIT_DATA.NAME.in(limitNames)))
                 .where(OPERATION_STATE_HISTORY.CREATED_AT.le(
-                        select(OPERATION_STATE_HISTORY.CREATED_AT)
-                                .from(OPERATION_STATE_HISTORY)
-                                .where(OPERATION_STATE_HISTORY.OPERATION_ID.eq(operationId))
-                                .limit(1)
+                                select(OPERATION_STATE_HISTORY.CREATED_AT)
+                                        .from(OPERATION_STATE_HISTORY)
+                                        .where(OPERATION_STATE_HISTORY.OPERATION_ID.eq(operationId))
+                                        .limit(1)
                         )
                 )
                 .fetch()
@@ -108,11 +108,13 @@ public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
                         LIMIT_DATA.LIMIT_ID,
                         LIMIT_DATA.NAME,
                         DSL.sum(DSL.when(
-                                DSL.coalesce(commitOps.OPERATION_VALUE, 0).notEqual(0)
-                                        .or(DSL.coalesce(rollbackOps.OPERATION_VALUE, 0).notEqual(0)), zero)
-                                        .otherwise(DSL.coalesce(holdOps.OPERATION_VALUE, 0).cast(Long.class))
-                                ).cast(Long.class),
-                        DSL.sum(DSL.coalesce(commitOps.OPERATION_VALUE, 0).cast(Long.class))
+                                        DSL.coalesce(commitOps.OPERATION_VALUE, 0).notEqual(0)
+                                                .or(DSL.coalesce(rollbackOps.OPERATION_VALUE, 0).notEqual(0)), zero)
+                                .otherwise(DSL.coalesce(holdOps.OPERATION_VALUE, 0).cast(Long.class))
+                        ).cast(Long.class),
+                        DSL.sum(DSL.coalesce(commitOps.OPERATION_VALUE, 0).cast(Long.class)),
+                        field(getCommitCountForLimit(limitNames)
+                        )
                 )
                 .from(
                         LIMIT_DATA
@@ -153,10 +155,20 @@ public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
                                 record.value1(),
                                 record.value2(),
                                 record.value3().longValue(),
-                                record.value4().longValue()
+                                record.value4().longValue(),
+                                record.value5().intValue()
                         )
                 )
                 .toList();
+    }
+
+    private  SelectConditionStep<Record1<Integer>> getCommitCountForLimit(List<String> limitNames) {
+        return selectCount()
+                .from(LIMIT_DATA)
+                .leftJoin(OPERATION_STATE_HISTORY)
+                .on(OPERATION_STATE_HISTORY.LIMIT_DATA_ID.eq(LIMIT_DATA.ID))
+                .where(LIMIT_DATA.NAME.in(limitNames))
+                .and(OPERATION_STATE_HISTORY.STATE.in(OperationState.COMMIT));
     }
 
     @Override

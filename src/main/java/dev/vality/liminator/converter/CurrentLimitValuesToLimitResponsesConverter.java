@@ -1,7 +1,7 @@
 package dev.vality.liminator.converter;
 
-import dev.vality.liminator.model.CurrentLimitValue;
 import dev.vality.liminator.LimitResponse;
+import dev.vality.liminator.model.CurrentLimitValue;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.convert.converter.Converter;
@@ -34,6 +34,17 @@ public class CurrentLimitValuesToLimitResponsesConverter
                 .setLimitId(value.getLimitId())
                 .setLimitName(value.getLimitName())
                 .setCommitValue(value.getCommitValue())
-                .setTotalValue(value.getHoldValue() + value.getCommitValue());
+                .setTotalValue(calculateTotal(value));
+    }
+
+    private long calculateTotal(CurrentLimitValue value) {
+        if (isZeroCommit(value)) {
+            return 0;
+        }
+        return value.getHoldValue() + value.getCommitValue();
+    }
+
+    private boolean isZeroCommit(CurrentLimitValue value) {
+        return value.getCommitCount() > 0 && value.getCommitValue() == 0;
     }
 }
