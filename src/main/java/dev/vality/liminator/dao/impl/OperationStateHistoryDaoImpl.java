@@ -113,8 +113,7 @@ public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
                                         .otherwise(DSL.coalesce(holdOps.OPERATION_VALUE, 0).cast(Long.class))
                                 ).cast(Long.class),
                         DSL.sum(DSL.coalesce(commitOps.OPERATION_VALUE, 0).cast(Long.class)),
-                        field(selectCount().from(commitOps).where(commitOps.STATE.in(OperationState.COMMIT))
-                        )
+                        field(DSL.count(commitOps.ID))
                 )
                 .from(
                         LIMIT_DATA
