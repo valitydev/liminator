@@ -97,12 +97,6 @@ public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
         var holdOps = OPERATION_STATE_HISTORY.as("hold_ops");
         var commitOps = OPERATION_STATE_HISTORY.as("commit_ops");
         var rollbackOps = OPERATION_STATE_HISTORY.as("rollback_ops");
-//        var commits = select()
-//                .from(OPERATION_STATE_HISTORY)
-//                .leftJoin(LIMIT_DATA)
-//                .on(OPERATION_STATE_HISTORY.LIMIT_DATA_ID.eq(LIMIT_DATA.ID))
-////                .where(LIMIT_DATA.NAME.in(limitNames))
-//                .where(OPERATION_STATE_HISTORY.STATE.in(OperationState.COMMIT));
         var createdAtSelect = select(OPERATION_STATE_HISTORY.CREATED_AT)
                 .from(OPERATION_STATE_HISTORY)
                 .where(OPERATION_STATE_HISTORY.OPERATION_ID.eq(operationId))
