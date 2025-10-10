@@ -97,6 +97,12 @@ public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
         var holdOps = OPERATION_STATE_HISTORY.as("hold_ops");
         var commitOps = OPERATION_STATE_HISTORY.as("commit_ops");
         var rollbackOps = OPERATION_STATE_HISTORY.as("rollback_ops");
+//        var commits = select()
+//                .from(OPERATION_STATE_HISTORY)
+//                .leftJoin(LIMIT_DATA)
+//                .on(OPERATION_STATE_HISTORY.LIMIT_DATA_ID.eq(LIMIT_DATA.ID))
+////                .where(LIMIT_DATA.NAME.in(limitNames))
+//                .where(OPERATION_STATE_HISTORY.STATE.in(OperationState.COMMIT));
         var createdAtSelect = select(OPERATION_STATE_HISTORY.CREATED_AT)
                 .from(OPERATION_STATE_HISTORY)
                 .where(OPERATION_STATE_HISTORY.OPERATION_ID.eq(operationId))
@@ -113,7 +119,7 @@ public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
                                         .otherwise(DSL.coalesce(holdOps.OPERATION_VALUE, 0).cast(Long.class))
                                 ).cast(Long.class),
                         DSL.sum(DSL.coalesce(commitOps.OPERATION_VALUE, 0).cast(Long.class)),
-                        field(getCommitCountForLimit(limitNames)
+                        field(selectCount().from(commitOps).where(commitOps.STATE.in(OperationState.COMMIT))
                         )
                 )
                 .from(
@@ -160,15 +166,6 @@ public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
                         )
                 )
                 .toList();
-    }
-
-    private  SelectConditionStep<Record1<Integer>> getCommitCountForLimit(List<String> limitNames) {
-        return selectCount()
-                .from(LIMIT_DATA)
-                .leftJoin(OPERATION_STATE_HISTORY)
-                .on(OPERATION_STATE_HISTORY.LIMIT_DATA_ID.eq(LIMIT_DATA.ID))
-                .where(LIMIT_DATA.NAME.in(limitNames))
-                .and(OPERATION_STATE_HISTORY.STATE.in(OperationState.COMMIT));
     }
 
     @Override
