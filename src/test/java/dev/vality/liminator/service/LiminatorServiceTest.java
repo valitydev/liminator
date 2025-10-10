@@ -182,6 +182,33 @@ class LiminatorServiceTest {
     }
 
     @Test
+    void commitWithZeroValueTest() throws TException {
+        String limitName = "TestZeroLimitCommit";
+        String operationId = "Op-123";
+        LimitRequest holdRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(new LimitChange(limitName, 500L)));
+        liminatorService.hold(holdRequest);
+
+        List<LimitResponse> limitsBeforeCommit = liminatorService.getLastLimitsValues(List.of(limitName));
+        assertNotNull(limitsBeforeCommit);
+        LimitResponse responseBeforeCommit = limitsBeforeCommit.stream().findFirst().get();
+        assertEquals(500L, responseBeforeCommit.getTotalValue());
+        assertEquals(0, responseBeforeCommit.getCommitValue());
+
+        LimitRequest commitRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(new LimitChange(limitName, 0L)));
+        liminatorService.commit(commitRequest);
+
+        List<LimitResponse> limitsAfterCommit = liminatorService.getLastLimitsValues(List.of(limitName));
+        assertNotNull(limitsAfterCommit);
+        LimitResponse response = limitsAfterCommit.stream().findFirst().get();
+        assertEquals(0L, response.getCommitValue());
+        assertEquals(0L, response.getTotalValue());
+    }
+
+    @Test
     void commitGrossThanHoldTest() throws TException {
         String limitName = "TestLimitCommit";
         String operationId = "Op-123";

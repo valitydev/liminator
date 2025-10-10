@@ -77,8 +77,12 @@ public class LimitOperationsHistoryService {
                 operationStateHistoryDao.getHoldLimitValues(limitNames, request.getOperationId());
         if (limitNames.size() != existedHoldOperations.size()) {
             log.error("[{}] Count of existed hold operations for limits is not equal to expected (existed size: {}, " +
-                            "expected size: {}, existedHoldOperations: {}, request: {})", state.getLiteral(),
-                    existedHoldOperations.size(), existedHoldOperations, limitNames.size(), request);
+                            "expected size: {}, existedHoldOperations: {}, request: {})",
+                    state.getLiteral(),
+                    existedHoldOperations.size(),
+                    limitNames.size(),
+                    existedHoldOperations,
+                    request);
             throw new OperationNotFound();
         }
         return existedHoldOperations;
@@ -96,7 +100,7 @@ public class LimitOperationsHistoryService {
                 .findAny();
         if (incorrectCommitValue.isPresent()) {
             log.error("[{}] Received incorrect commit value - hold is less than commit (existed size: {}, " +
-                            "expected size: {}, request: {})", state.getLiteral(), existedHoldOperations,
+                            "expected size: {}, request: {})", state.getLiteral(), existedHoldOperations.size(),
                     limitNamesMap.keySet().size(), request);
             throw new OperationNotFound();
         }

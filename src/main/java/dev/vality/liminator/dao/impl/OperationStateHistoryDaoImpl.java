@@ -16,7 +16,7 @@ import java.util.List;
 
 import static dev.vality.liminator.domain.Tables.LIMIT_DATA;
 import static dev.vality.liminator.domain.Tables.OPERATION_STATE_HISTORY;
-import static org.jooq.impl.DSL.select;
+import static org.jooq.impl.DSL.*;
 
 @Component
 @RequiredArgsConstructor
@@ -112,7 +112,8 @@ public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
                                         .or(DSL.coalesce(rollbackOps.OPERATION_VALUE, 0).notEqual(0)), zero)
                                         .otherwise(DSL.coalesce(holdOps.OPERATION_VALUE, 0).cast(Long.class))
                                 ).cast(Long.class),
-                        DSL.sum(DSL.coalesce(commitOps.OPERATION_VALUE, 0).cast(Long.class))
+                        DSL.sum(DSL.coalesce(commitOps.OPERATION_VALUE, 0).cast(Long.class)),
+                        field(DSL.count(commitOps.ID))
                 )
                 .from(
                         LIMIT_DATA
@@ -153,7 +154,8 @@ public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
                                 record.value1(),
                                 record.value2(),
                                 record.value3().longValue(),
-                                record.value4().longValue()
+                                record.value4().longValue(),
+                                record.value5().intValue()
                         )
                 )
                 .toList();

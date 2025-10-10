@@ -11,4 +11,5 @@ public class CurrentLimitValue {
     private String limitName;
     private Long holdValue;
     private Long commitValue;
+    private Integer commitCount;
 }
