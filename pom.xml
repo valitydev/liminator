@@ -11,7 +11,7 @@
     </parent>
 
     <artifactId>liminator</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <packaging>jar</packaging>
 
     <name>liminator</name>
@@ -80,7 +80,7 @@
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-web</artifactId>
-            <version>6.2.9</version>
+            <version>6.2.17</version>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
@@ -112,7 +112,7 @@
         <dependency>
             <groupId>org.jooq</groupId>
             <artifactId>jooq</artifactId>
-            <version>3.20.6</version>
+            <version>3.20.11</version>
         </dependency>
         <dependency>
             <groupId>net.logstash.logback</groupId>
@@ -139,12 +139,12 @@
         <dependency>
             <groupId>net.javacrumbs.shedlock</groupId>
             <artifactId>shedlock-provider-jdbc-template</artifactId>
-            <version>6.9.2</version>
+            <version>6.10.0</version>
         </dependency>
         <dependency>
             <groupId>net.javacrumbs.shedlock</groupId>
             <artifactId>shedlock-spring</artifactId>
-            <version>6.9.2</version>
+            <version>6.10.0</version>
         </dependency>
         <dependency>
             <groupId>io.micrometer</groupId>
@@ -157,12 +157,12 @@
         <dependency>
             <groupId>org.yaml</groupId>
             <artifactId>snakeyaml</artifactId>
-            <version>2.4</version>
+            <version>2.6</version>
         </dependency>
         <dependency>
             <groupId>software.amazon.msk</groupId>
             <artifactId>aws-msk-iam-auth</artifactId>
-            <version>2.3.2</version>
+            <version>2.3.5</version>
         </dependency>
 
         <!--dev.vality-->
@@ -220,12 +220,12 @@
         <dependency>
             <groupId>io.zonky.test</groupId>
             <artifactId>embedded-postgres</artifactId>
-            <version>2.1.0</version>
+            <version>2.2.2</version>
         </dependency>
         <dependency>
             <groupId>io.zonky.test.postgres</groupId>
             <artifactId>embedded-postgres-binaries-darwin-amd64</artifactId>
-            <version>17.5.0</version>
+            <version>17.9.0</version>
             <scope>runtime</scope>
         </dependency>
     </dependencies>
@@ -309,7 +309,7 @@
                     <dependency>
                         <groupId>org.postgresql</groupId>
                         <artifactId>postgresql</artifactId>
-                        <version>42.7.3</version>
+                        <version>42.7.10</version>
                     </dependency>
                 </dependencies>
             </plugin>
@@ -364,12 +364,12 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-remote-resources-plugin</artifactId>
-                <version>3.1.0</version>
+                <version>3.3.0</version>
                 <dependencies>
                     <dependency>
                         <groupId>org.apache.maven.shared</groupId>
                         <artifactId>maven-filtering</artifactId>
-                        <version>3.3.1</version>
+                        <version>3.5.0</version>
                     </dependency>
                 </dependencies>
                 <configuration>
