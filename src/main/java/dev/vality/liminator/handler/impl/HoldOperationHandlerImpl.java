@@ -1,10 +1,9 @@
 package dev.vality.liminator.handler.impl;
 
-import dev.vality.liminator.LimitChange;
 import dev.vality.liminator.LimitRequest;
 import dev.vality.liminator.OperationAlreadyInFinalState;
 import dev.vality.liminator.domain.enums.OperationState;
-import dev.vality.liminator.domain.tables.pojos.LimitData;
+import dev.vality.liminator.domain.tables.pojos.OperationStateHistory;
 import dev.vality.liminator.handler.HoldOperationHandler;
 import dev.vality.liminator.service.LimitDataService;
 import dev.vality.liminator.service.LimitOperationsHistoryService;
@@ -16,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -30,25 +28,23 @@ public class HoldOperationHandlerImpl implements HoldOperationHandler {
     private final LimitDataService limitDataService;
 
     private static final String LOG_PREFIX = "HOLD";
+    private static final List<OperationState> FINAL_STATES = List.of(OperationState.COMMIT, OperationState.ROLLBACK);
 
     @Transactional
     @Override
     public void handle(LimitRequest request) throws TException {
-        var limitNamesMap = new HashMap<String, Long>();
-        List<LimitChange> limitChanges = request.getLimitChanges();
-        for (LimitChange change : limitChanges) {
-            LimitData limitData = limitDataService.get(change.getLimitName());
-            if (limitData != null) {
-                limitNamesMap.put(limitData.getName(), limitData.getId());
-            } else {
-                var limitId = limitDataService.save(change);
-                limitNamesMap.put(change.getLimitName(), limitId);
-            }
-        }
+        // One query to get limitNames or save it if not exist
+        Map<String, Long> limitNamesMap = limitDataService.getOrCreateLimitDataMap(request.getLimitChanges());
         String operationId = request.getOperationId();
-        checkExistedFinalizeOperations(limitNamesMap, operationId);
-        Boolean isAlreadyExistHoldOperations = isAlreadyExistHoldOperations(limitNamesMap, request.getOperationId());
-        if (Boolean.TRUE.equals(isAlreadyExistHoldOperations)) {
+
+        // One history query to get states and then filter
+        List<OperationStateHistory> existedOperations = limitOperationsHistoryService.get(
+                operationId,
+                limitNamesMap.values(),
+                List.of(OperationState.HOLD, OperationState.COMMIT, OperationState.ROLLBACK)
+        );
+        checkExistedFinalizeOperations(operationId, existedOperations);
+        if (isAlreadyExistHoldOperations(operationId, existedOperations)) {
             return;
         }
         log.info("Save operation: {} with limits: {}", operationId, Arrays.toString(limitNamesMap.keySet().toArray()));
@@ -56,13 +52,11 @@ public class HoldOperationHandlerImpl implements HoldOperationHandler {
         log.info("Success saved operation: {} with {} limits", operationId, counts.length);
     }
 
-    private Boolean isAlreadyExistHoldOperations(Map<String, Long> limitNamesMap,
-                                                 String operationId) throws TException {
-        var existedHoldOperations = limitOperationsHistoryService.get(
-                operationId,
-                limitNamesMap.values(),
-                List.of(OperationState.HOLD)
-        );
+    private boolean isAlreadyExistHoldOperations(String operationId,
+                                                 List<OperationStateHistory> existedOperations) {
+        List<OperationStateHistory> existedHoldOperations = existedOperations.stream()
+                .filter(operation -> operation.getState() == OperationState.HOLD)
+                .toList();
         if (CollectionUtils.isEmpty(existedHoldOperations)) {
             return false;
         }
@@ -71,13 +65,11 @@ public class HoldOperationHandlerImpl implements HoldOperationHandler {
         return true;
     }
 
-    private void checkExistedFinalizeOperations(Map<String, Long> limitNamesMap,
-                                                String operationId) throws TException {
-        var existedFinalizeOperations = limitOperationsHistoryService.get(
-                operationId,
-                limitNamesMap.values(),
-                List.of(OperationState.COMMIT, OperationState.ROLLBACK)
-        );
+    private void checkExistedFinalizeOperations(String operationId,
+                                                List<OperationStateHistory> existedOperations) throws TException {
+        List<OperationStateHistory> existedFinalizeOperations = existedOperations.stream()
+                .filter(operation -> FINAL_STATES.contains(operation.getState()))
+                .toList();
         if (!CollectionUtils.isEmpty(existedFinalizeOperations)) {
             log.error("[{}] DB already has commit/rollback operation {}: {}",
                     LOG_PREFIX, operationId, existedFinalizeOperations);

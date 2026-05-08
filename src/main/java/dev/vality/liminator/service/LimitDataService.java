@@ -19,9 +19,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+
+import static java.util.stream.Collectors.toMap;
 
 import static dev.vality.liminator.domain.enums.OperationState.ROLLBACK;
 
@@ -60,6 +63,20 @@ public class LimitDataService {
     public LimitData get(String limitName) throws TException {
         log.debug("Try to get limit for limitName: {}", limitName);
         return limitDataDao.get(limitName);
+    }
+
+    public Map<String, Long> getOrCreateLimitDataMap(List<LimitChange> limitChanges) {
+        List<String> limitNames = limitChanges.stream()
+                .map(LimitChange::getLimitName)
+                .distinct()
+                .toList();
+        Map<String, Long> limitNamesMap = limitDataDao.get(limitNames).stream()
+                .collect(toMap(LimitData::getName, LimitData::getId, (first, second) -> first, HashMap::new));
+
+        for (LimitChange change : limitChanges) {
+            limitNamesMap.computeIfAbsent(change.getLimitName(), ignoredLimitName -> save(change));
+        }
+        return limitNamesMap;
     }
 
     @Transactional

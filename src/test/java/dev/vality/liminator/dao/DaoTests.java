@@ -201,6 +201,64 @@ class DaoTests {
         assertEquals(400, firstCurrentLimitValue.getHoldValue());
     }
 
+    @Test
+    void getLimitHistoryByOperationIdUsesLatestTimestampTest() {
+        String limitName = "Limit-History-Boundary";
+        Long limitDataId = limitDataDao.save(
+                new LimitData(null, limitName, LocalDate.now(), LocalDateTime.now(), "Limit-History-Boundary-ID")
+        );
+
+        LocalDateTime oldOpTime = LocalDateTime.now().minusMinutes(4);
+        LocalDateTime firstReferenceTime = LocalDateTime.now().minusMinutes(3);
+        LocalDateTime middleOpTime = LocalDateTime.now().minusMinutes(2);
+        LocalDateTime latestReferenceTime = LocalDateTime.now().minusMinutes(1);
+
+        var oldOperation = createOperationHistory(
+                limitName,
+                limitDataId,
+                "operation-old",
+                oldOpTime,
+                OperationState.HOLD
+        );
+        oldOperation.setOperationValue(111L);
+        operationStateHistoryDao.save(oldOperation);
+        var firstReferenceOperation = createOperationHistory(
+                limitName,
+                limitDataId,
+                "operation-reference",
+                firstReferenceTime,
+                OperationState.HOLD
+        );
+        firstReferenceOperation.setOperationValue(222L);
+        operationStateHistoryDao.save(firstReferenceOperation);
+        var middleOperation = createOperationHistory(
+                limitName,
+                limitDataId,
+                "operation-middle",
+                middleOpTime,
+                OperationState.HOLD
+        );
+        middleOperation.setOperationValue(333L);
+        operationStateHistoryDao.save(middleOperation);
+        var latestReferenceOperation = createOperationHistory(
+                limitName,
+                limitDataId,
+                "operation-reference",
+                latestReferenceTime,
+                OperationState.COMMIT
+        );
+        latestReferenceOperation.setOperationValue(444L);
+        operationStateHistoryDao.save(latestReferenceOperation);
+
+        List<LimitValue> history = operationStateHistoryDao.getLimitHistory(List.of(limitName), "operation-reference");
+
+        assertEquals(4, history.size());
+        long middleOpByValue = history.stream()
+                .filter(limitValue -> limitValue.getOperationValue() == 333L)
+                .count();
+        assertEquals(1L, middleOpByValue);
+    }
+
     private OperationStateHistory createOperationHistory(String limitName, Long id, String operationId) {
         return createOperationHistory(limitName, id, operationId, LocalDateTime.now(), OperationState.HOLD);
     }
