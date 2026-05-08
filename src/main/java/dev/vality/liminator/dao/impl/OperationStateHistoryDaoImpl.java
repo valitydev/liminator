@@ -67,6 +67,7 @@ public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
                         select(OPERATION_STATE_HISTORY.CREATED_AT)
                                 .from(OPERATION_STATE_HISTORY)
                                 .where(OPERATION_STATE_HISTORY.OPERATION_ID.eq(operationId))
+                                .orderBy(OPERATION_STATE_HISTORY.CREATED_AT.desc(), OPERATION_STATE_HISTORY.ID.desc())
                                 .limit(1)
                         )
                 )

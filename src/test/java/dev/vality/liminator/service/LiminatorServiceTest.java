@@ -306,6 +306,91 @@ class LiminatorServiceTest {
     }
 
     @Test
+    void duplicateHoldFewValueTest() throws TException {
+        String firstLimitName = "TestLimitDuplicateHold1";
+        String secondLimitName = "TestLimitDuplicateHold2";
+        String operationId = "OpHoldDuplicate";
+        LimitRequest holdRequest = new LimitRequest()
+                .setOperationId(operationId)
+                .setLimitChanges(List.of(
+                        new LimitChange(firstLimitName, 700L),
+                        new LimitChange(secondLimitName, 300L))
+                );
+
+        liminatorService.hold(holdRequest);
+        List<LimitResponse> repeatedHoldResponse = liminatorService.hold(holdRequest);
+
+        assertEquals(2, repeatedHoldResponse.size());
+        LimitResponse firstResponse = getLimitResponseByLimitName(repeatedHoldResponse, firstLimitName);
+        assertEquals(700L, firstResponse.getTotalValue());
+        assertEquals(0L, firstResponse.getCommitValue());
+        LimitResponse secondResponse = getLimitResponseByLimitName(repeatedHoldResponse, secondLimitName);
+        assertEquals(300L, secondResponse.getTotalValue());
+        assertEquals(0L, secondResponse.getCommitValue());
+    }
+
+    @Test
+    void holdGetCommitZeroAndRepeatHoldIntegrationTest() throws TException {
+        String limitA = "TestFlowLimitA";
+        String limitB = "TestFlowLimitB";
+        String mainOperationId = "OpFlowMain";
+        final String secondOperationId = "OpFlowSecond";
+
+        LimitRequest initialHoldRequest = new LimitRequest()
+                .setOperationId(mainOperationId)
+                .setLimitChanges(List.of(
+                        new LimitChange(limitA, 1000L),
+                        new LimitChange(limitB, 500L))
+                );
+
+        List<LimitResponse> firstHoldResponse = liminatorService.hold(initialHoldRequest);
+        assertEquals(2, firstHoldResponse.size());
+        assertEquals(1000L, getLimitResponseByLimitName(firstHoldResponse, limitA).getTotalValue());
+        assertEquals(500L, getLimitResponseByLimitName(firstHoldResponse, limitB).getTotalValue());
+
+        // Repeated hold must stay idempotent and not duplicate limit impact.
+        List<LimitResponse> repeatedHoldResponse = liminatorService.hold(initialHoldRequest);
+        assertEquals(2, repeatedHoldResponse.size());
+        assertEquals(1000L, getLimitResponseByLimitName(repeatedHoldResponse, limitA).getTotalValue());
+        assertEquals(500L, getLimitResponseByLimitName(repeatedHoldResponse, limitB).getTotalValue());
+
+        LimitRequest zeroAndPartialCommitRequest = new LimitRequest()
+                .setOperationId(mainOperationId)
+                .setLimitChanges(List.of(
+                        new LimitChange(limitA, 0L),
+                        new LimitChange(limitB, 200L))
+                );
+        liminatorService.commit(zeroAndPartialCommitRequest);
+
+        List<LimitResponse> limitsAfterCommit = liminatorService.getLastLimitsValues(List.of(limitA, limitB));
+        LimitResponse limitAAfterCommit = getLimitResponseByLimitName(limitsAfterCommit, limitA);
+        LimitResponse limitBAfterCommit = getLimitResponseByLimitName(limitsAfterCommit, limitB);
+        assertEquals(0L, limitAAfterCommit.getCommitValue());
+        assertEquals(0L, limitAAfterCommit.getTotalValue());
+        assertEquals(200L, limitBAfterCommit.getCommitValue());
+        assertEquals(200L, limitBAfterCommit.getTotalValue());
+
+        assertThrows(OperationAlreadyInFinalState.class, () -> liminatorService.hold(initialHoldRequest));
+
+        LimitRequest secondHoldRequest = new LimitRequest()
+                .setOperationId(secondOperationId)
+                .setLimitChanges(List.of(new LimitChange(limitB, 300L)));
+        liminatorService.hold(secondHoldRequest);
+
+        List<LimitResponse> secondOpSnapshot = liminatorService.get(secondHoldRequest);
+        LimitResponse limitBSecondSnapshot = getLimitResponseByLimitName(secondOpSnapshot, limitB);
+        assertEquals(200L, limitBSecondSnapshot.getCommitValue());
+        assertEquals(500L, limitBSecondSnapshot.getTotalValue());
+
+        List<LimitResponse> finalLastValues = liminatorService.getLastLimitsValues(List.of(limitA, limitB));
+        LimitResponse finalLimitA = getLimitResponseByLimitName(finalLastValues, limitA);
+        LimitResponse finalLimitB = getLimitResponseByLimitName(finalLastValues, limitB);
+        assertEquals(0L, finalLimitA.getTotalValue());
+        assertEquals(200L, finalLimitB.getCommitValue());
+        assertEquals(500L, finalLimitB.getTotalValue());
+    }
+
+    @Test
     void commitValueTest() throws TException {
         String limitName = "TestLimitCommit";
         String operationId = "Op-123";

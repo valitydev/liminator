@@ -29,9 +29,22 @@
         <db.schema>lim</db.schema>
         <local.pg.url>jdbc:postgresql://localhost:5432/liminator</local.pg.url>
         <local.pg.port>5432</local.pg.port>
+        <testcontainers.version>1.21.4</testcontainers.version>
         <checkstyle.config.suppressions.path>./src/main/resources/checkstyle/checkstyle-suppressions.xml
         </checkstyle.config.suppressions.path>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <!--spring -->
