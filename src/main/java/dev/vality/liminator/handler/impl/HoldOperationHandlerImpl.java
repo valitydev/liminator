@@ -60,7 +60,7 @@ public class HoldOperationHandlerImpl implements HoldOperationHandler {
         if (CollectionUtils.isEmpty(existedHoldOperations)) {
             return false;
         }
-        log.error("[{}] DB already has operation with id {}: {}",
+        log.warn("[{}] DB already has operation with id {}: {}",
                 LOG_PREFIX, operationId, existedHoldOperations);
         return true;
     }
