@@ -29,6 +29,10 @@ public class LimitOperationsHistoryService {
     private final OperationStateHistoryDao operationStateHistoryDao;
     private final OperationStateHistoryConverter operationStateHistoryConverter;
 
+    public void lockOperation(String operationId) {
+        operationStateHistoryDao.lockOperation(operationId);
+    }
+
     public int[] writeOperations(LimitRequest request,
                                  OperationState state,
                                  Map<String, Long> limitNamesMap) {

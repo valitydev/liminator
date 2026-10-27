@@ -17,6 +17,9 @@ spring:
   jooq:
     sql-dialect: Postgres
 
+service:
+  operation-lock-timeout-seconds: 2
+
 server:
   port: "${server.port}"
 

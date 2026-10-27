@@ -20,7 +20,6 @@ import java.util.Map;
 
 @Slf4j
 @Component
-@Transactional
 @RequiredArgsConstructor
 public class HoldOperationHandlerImpl implements HoldOperationHandler {
 
@@ -33,9 +32,9 @@ public class HoldOperationHandlerImpl implements HoldOperationHandler {
     @Transactional
     @Override
     public void handle(LimitRequest request) throws TException {
-        // One query to get limitNames or save it if not exist
-        Map<String, Long> limitNamesMap = limitDataService.getOrCreateLimitDataMap(request.getLimitChanges());
         String operationId = request.getOperationId();
+        limitOperationsHistoryService.lockOperation(operationId);
+        Map<String, Long> limitNamesMap = limitDataService.getLimitDataMap(request.getLimitChanges());
 
         // One history query to get states and then filter
         List<OperationStateHistory> existedOperations = limitOperationsHistoryService.get(
@@ -47,6 +46,7 @@ public class HoldOperationHandlerImpl implements HoldOperationHandler {
         if (isAlreadyExistHoldOperations(operationId, existedOperations)) {
             return;
         }
+        limitDataService.createMissingLimitData(request.getLimitChanges(), limitNamesMap);
         log.info("Save operation: {} with limits: {}", operationId, Arrays.toString(limitNamesMap.keySet().toArray()));
         int[] counts = limitOperationsHistoryService.writeOperations(request, OperationState.HOLD, limitNamesMap);
         log.info("Success saved operation: {} with {} limits", operationId, counts.length);

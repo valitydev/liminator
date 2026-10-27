@@ -9,7 +9,10 @@ import lombok.RequiredArgsConstructor;
 import org.jooq.*;
 import org.jooq.Record;
 import org.jooq.impl.DSL;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.List;
@@ -22,8 +25,22 @@ import static org.jooq.impl.DSL.*;
 @RequiredArgsConstructor
 public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
 
+    private static final int OPERATION_LOCK_NAMESPACE = "liminator:operation".hashCode();
+
     private final DSLContext dslContext;
     private final RecordMapper<Record, LimitValue> recordMapper;
+    @Value("${service.operation-lock-timeout-seconds:4}")
+    private int operationLockTimeoutSeconds;
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void lockOperation(String operationId) {
+        // A transaction lock also protects operations whose first history row does not exist yet.
+        dslContext.select(field("pg_advisory_xact_lock({0}, hashtext({1}))",
+                        Object.class, val(OPERATION_LOCK_NAMESPACE), val(operationId)))
+                .queryTimeout(operationLockTimeoutSeconds)
+                .fetch();
+    }
 
     @Override
     public Long save(OperationStateHistory history) {

@@ -29,9 +29,10 @@ public class FinalizeOperationHandlerImpl implements FinalizeOperationHandler {
     private final LimitDataService limitDataService;
     private final LimitOperationsHistoryService limitOperationsHistoryService;
 
-    @Transactional
+    @Transactional(rollbackFor = TException.class)
     @Override
     public void handle(LimitRequest request, OperationState state) throws TException {
+        limitOperationsHistoryService.lockOperation(request.getOperationId());
         Map<String, Long> limitNamesMap = getLimitDataMap(request, state.getLiteral());
         var existedFinalOperations = limitOperationsHistoryService.getExistedFinalOperations(request, limitNamesMap);
         if (existedFinalOperations.isEmpty()) {

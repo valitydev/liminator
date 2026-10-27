@@ -20,6 +20,7 @@ import org.springframework.util.CollectionUtils;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -65,18 +66,22 @@ public class LimitDataService {
         return limitDataDao.get(limitName);
     }
 
-    public Map<String, Long> getOrCreateLimitDataMap(List<LimitChange> limitChanges) {
+    public Map<String, Long> getLimitDataMap(List<LimitChange> limitChanges) {
         List<String> limitNames = limitChanges.stream()
                 .map(LimitChange::getLimitName)
                 .distinct()
                 .toList();
-        Map<String, Long> limitNamesMap = limitDataDao.get(limitNames).stream()
+        return limitDataDao.get(limitNames).stream()
                 .collect(toMap(LimitData::getName, LimitData::getId, (first, second) -> first, HashMap::new));
+    }
 
-        for (LimitChange change : limitChanges) {
+    public void createMissingLimitData(List<LimitChange> limitChanges, Map<String, Long> limitNamesMap) {
+        var sortedChanges = limitChanges.stream()
+                .sorted(Comparator.comparing(LimitChange::getLimitName))
+                .toList();
+        for (LimitChange change : sortedChanges) {
             limitNamesMap.computeIfAbsent(change.getLimitName(), ignoredLimitName -> save(change));
         }
-        return limitNamesMap;
     }
 
     @Transactional

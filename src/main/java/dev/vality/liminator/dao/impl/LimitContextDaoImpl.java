@@ -16,12 +16,15 @@ public class LimitContextDaoImpl implements LimitContextDao {
 
     @Override
     public Long save(LimitContext limitContext) {
-        return dslContext
+        var inserted = dslContext
                 .insertInto(LIMIT_CONTEXT)
                 .set(dslContext.newRecord(LIMIT_CONTEXT, limitContext))
+                .onConflict(LIMIT_CONTEXT.LIMIT_DATA_ID)
+                .doNothing()
                 .returning(LIMIT_CONTEXT.ID)
-                .fetchOne()
-                .getId();
+                .fetchOne();
+
+        return inserted != null ? inserted.getId() : getLimitContext(limitContext.getLimitDataId()).getId();
     }
 
     @Override
