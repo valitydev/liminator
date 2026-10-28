@@ -1,9 +1,9 @@
 package dev.vality.liminator.converter.impl;
 
 import dev.vality.liminator.converter.OperationStateHistoryConverter;
+import dev.vality.liminator.LimitChange;
 import dev.vality.liminator.domain.enums.OperationState;
 import dev.vality.liminator.domain.tables.pojos.OperationStateHistory;
-import dev.vality.liminator.LimitRequest;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -14,14 +14,15 @@ import java.util.Map;
 public class OperationStateHistoryConverterImpl implements OperationStateHistoryConverter {
 
     @Override
-    public List<OperationStateHistory> convert(LimitRequest request,
+    public List<OperationStateHistory> convert(String operationId,
+                                               List<LimitChange> limitChanges,
                                                OperationState state,
                                                Map<String, Long> limitNamesMap) {
         var now = LocalDateTime.now();
-        return request.getLimitChanges().stream()
+        return limitChanges.stream()
                 .map(change -> {
                     OperationStateHistory history = new OperationStateHistory();
-                    history.setOperationId(request.getOperationId());
+                    history.setOperationId(operationId);
                     history.setLimitDataId(limitNamesMap.get(change.getLimitName()));
                     history.setOperationValue(change.getValue());
                     history.setState(state);

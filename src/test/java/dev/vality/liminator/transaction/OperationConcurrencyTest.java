@@ -24,10 +24,14 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.datasource.ConnectionHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import javax.sql.DataSource;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -48,6 +52,7 @@ import static dev.vality.liminator.domain.Tables.OPERATION_STATE_HISTORY;
 import static dev.vality.liminator.domain.enums.OperationState.COMMIT;
 import static dev.vality.liminator.domain.enums.OperationState.HOLD;
 import static dev.vality.liminator.domain.enums.OperationState.ROLLBACK;
+import static dev.vality.liminator.util.OperationLockKey.fromOperationId;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.*;
@@ -70,6 +75,8 @@ class OperationConcurrencyTest extends AbstractIntegrationTestWithEmbeddedPostgr
     private DSLContext dslContext;
     @Autowired
     private PlatformTransactionManager transactionManager;
+    @Autowired
+    private DataSource dataSource;
     @MockitoSpyBean
     private OperationStateHistoryDao historyDao;
     @MockitoSpyBean
@@ -103,7 +110,7 @@ class OperationConcurrencyTest extends AbstractIntegrationTestWithEmbeddedPostgr
             final Future<?> firstResult = hold(request(operationId, first));
             pause.awaitEntered();
             final Future<?> secondResult = hold(request(operationId, second));
-            awaitBlockedLock();
+            awaitBlockedLock(operationId);
             pause.close();
             firstResult.get(10, SECONDS);
             secondResult.get(10, SECONDS);
@@ -201,7 +208,7 @@ class OperationConcurrencyTest extends AbstractIntegrationTestWithEmbeddedPostgr
             final Future<?> first = finalizeOperation(request, state);
             pause.awaitEntered();
             final Future<?> second = finalizeOperation(request, state);
-            awaitBlockedLock();
+            awaitBlockedLock(request.getOperationId());
             pause.close();
             first.get(10, SECONDS);
             second.get(10, SECONDS);
@@ -220,7 +227,7 @@ class OperationConcurrencyTest extends AbstractIntegrationTestWithEmbeddedPostgr
             final Future<?> first = finalizeOperation(request, firstState);
             pause.awaitEntered();
             final Future<?> second = finalizeOperation(request, firstState == COMMIT ? ROLLBACK : COMMIT);
-            awaitBlockedLock();
+            awaitBlockedLock(request.getOperationId());
             pause.close();
             first.get(10, SECONDS);
             assertInstanceOf(OperationNotFound.class, failure(second));
@@ -237,7 +244,7 @@ class OperationConcurrencyTest extends AbstractIntegrationTestWithEmbeddedPostgr
             pause.awaitEntered();
             final Future<?> second = finalizeOperation(request(request.getOperationId(),
                     new LimitChange(request.getLimitChanges().get(0).getLimitName(), 50)), COMMIT);
-            awaitBlockedLock();
+            awaitBlockedLock(request.getOperationId());
             pause.close();
             first.get(10, SECONDS);
             assertInstanceOf(OperationNotFound.class, failure(second));
@@ -252,7 +259,7 @@ class OperationConcurrencyTest extends AbstractIntegrationTestWithEmbeddedPostgr
             final Future<?> first = hold(request);
             pause.awaitEntered();
             final Future<?> second = finalizeOperation(request, COMMIT);
-            awaitBlockedLock();
+            awaitBlockedLock(request.getOperationId());
             pause.close();
             first.get(10, SECONDS);
             second.get(10, SECONDS);
@@ -268,7 +275,7 @@ class OperationConcurrencyTest extends AbstractIntegrationTestWithEmbeddedPostgr
             final Future<?> first = finalizeOperation(request, COMMIT);
             pause.awaitEntered();
             final Future<?> second = hold(request);
-            awaitBlockedLock();
+            awaitBlockedLock(request.getOperationId());
             pause.close();
             first.get(10, SECONDS);
             assertInstanceOf(OperationAlreadyInFinalState.class, failure(second));
@@ -289,7 +296,7 @@ class OperationConcurrencyTest extends AbstractIntegrationTestWithEmbeddedPostgr
             pause.awaitEntered();
             final Future<?> second = hold(request(operationId,
                     new LimitChange(name, 200).setContext(Map.of("owner", "saved"))));
-            awaitBlockedLock();
+            awaitBlockedLock(operationId);
             pause.close();
             assertInstanceOf(IllegalStateException.class, failure(first));
             second.get(10, SECONDS);
@@ -310,7 +317,7 @@ class OperationConcurrencyTest extends AbstractIntegrationTestWithEmbeddedPostgr
             final Future<?> first = finalizeOperation(request, COMMIT);
             pause.awaitEntered();
             final Future<?> second = finalizeOperation(request, ROLLBACK);
-            awaitBlockedLock();
+            awaitBlockedLock(request.getOperationId());
             pause.close();
             assertInstanceOf(OperationNotFound.class, failure(first));
             second.get(10, SECONDS);
@@ -332,13 +339,8 @@ class OperationConcurrencyTest extends AbstractIntegrationTestWithEmbeddedPostgr
         try {
             assertTrue(locked.await(5, SECONDS));
             final Future<?> blocked = hold(request);
-            awaitBlockedLock();
-            Throwable cause = failure(blocked);
-            while (cause != null && !(cause instanceof SQLException)) {
-                cause = cause.getCause();
-            }
-            assertNotNull(cause);
-            assertEquals("57014", ((SQLException) cause).getSQLState());
+            awaitBlockedLock(request.getOperationId());
+            assertLockTimeout(failure(blocked));
             assertNull(limitDataDao.get(request.getLimitChanges().get(0).getLimitName()));
             assertTrue(history(request.getOperationId()).isEmpty());
         } finally {
@@ -347,6 +349,67 @@ class OperationConcurrencyTest extends AbstractIntegrationTestWithEmbeddedPostgr
         }
         service.hold(request);
         assertStates(request.getOperationId(), HOLD);
+    }
+
+    @Test
+    void sharedLimitLockTimeoutRollsBackEarlierInsertsAndRetrySucceeds() throws Exception {
+        String common = "z-" + id();
+        String extra = "a-" + id();
+        String firstId = id();
+        String secondId = id();
+        LimitRequest secondRequest = request(secondId,
+                new LimitChange(extra, 200).setContext(Map.of("owner", "second")),
+                new LimitChange(common, 300));
+        try (PausedWrite pause = new PausedWrite()) {
+            AtomicBoolean firstInsert = new AtomicBoolean(true);
+            doAnswer(invocation -> {
+                Object result = invocation.callRealMethod();
+                LimitData limit = invocation.getArgument(0);
+                if (limit.getName().equals(common) && firstInsert.compareAndSet(true, false)) {
+                    pause.entered.countDown();
+                    awaitLatch(pause.release);
+                }
+                return result;
+            }).when(limitDataDao).save(any(LimitData.class));
+            final Future<?> first = hold(request(firstId, new LimitChange(common, 100)));
+            pause.awaitEntered();
+            final Future<?> second = hold(secondRequest);
+            assertLockTimeout(failure(second));
+            assertNull(limitDataDao.get(extra));
+            assertTrue(history(secondId).isEmpty());
+            pause.close();
+            first.get(10, SECONDS);
+        }
+
+        service.hold(secondRequest);
+        assertStates(secondId, HOLD, HOLD);
+        assertEquals("{\"owner\":\"second\"}",
+                contextDao.getLimitContext(limitDataDao.get(extra).getId()).getContext());
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void lockTimeoutSettingIsRestoredAfterTransaction(boolean rollback) throws Exception {
+        try (Connection connection = dataSource.getConnection()) {
+            String original = lockTimeout(connection);
+            TransactionSynchronizationManager.bindResource(dataSource, new ConnectionHolder(connection));
+            try {
+                new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                    historyDao.lockOperation(id());
+                    try {
+                        assertNotEquals(original, lockTimeout(connection));
+                    } catch (SQLException e) {
+                        throw new IllegalStateException(e);
+                    }
+                    if (rollback) {
+                        status.setRollbackOnly();
+                    }
+                });
+                assertEquals(original, lockTimeout(connection));
+            } finally {
+                TransactionSynchronizationManager.unbindResource(dataSource);
+            }
+        }
     }
 
     @Test
@@ -429,11 +492,28 @@ class OperationConcurrencyTest extends AbstractIntegrationTestWithEmbeddedPostgr
         return pause;
     }
 
-    private void awaitBlockedLock() {
+    private void awaitBlockedLock(String operationId) {
+        long key = fromOperationId(operationId);
         await().atMost(Duration.ofSeconds(2)).pollInterval(Duration.ofMillis(20)).until(() -> dslContext.fetchOne(
                 "select count(*) from pg_locks where locktype = 'advisory' " +
-                        "and classid = cast(? as oid) and not granted",
-                "liminator:operation".hashCode()).get(0, Integer.class) > 0);
+                        "and classid = cast(? as oid) and objid = cast(? as oid) and objsubid = 1 and not granted",
+                key >>> 32, key & 0xFFFFFFFFL).get(0, Integer.class) > 0);
+    }
+
+    private void assertLockTimeout(Throwable cause) {
+        while (cause != null && !(cause instanceof SQLException)) {
+            cause = cause.getCause();
+        }
+        assertNotNull(cause);
+        assertEquals("55P03", ((SQLException) cause).getSQLState());
+    }
+
+    private String lockTimeout(Connection connection) throws SQLException {
+        try (var statement = connection.createStatement();
+                var result = statement.executeQuery("show lock_timeout")) {
+            assertTrue(result.next());
+            return result.getString(1);
+        }
     }
 
     private Future<?> hold(LimitRequest request) {

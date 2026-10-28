@@ -5,6 +5,7 @@ import dev.vality.liminator.domain.enums.OperationState;
 import dev.vality.liminator.domain.tables.pojos.OperationStateHistory;
 import dev.vality.liminator.model.CurrentLimitValue;
 import dev.vality.liminator.model.LimitValue;
+import dev.vality.liminator.util.OperationLockKey;
 import lombok.RequiredArgsConstructor;
 import org.jooq.*;
 import org.jooq.Record;
@@ -25,8 +26,6 @@ import static org.jooq.impl.DSL.*;
 @RequiredArgsConstructor
 public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
 
-    private static final int OPERATION_LOCK_NAMESPACE = "liminator:operation".hashCode();
-
     private final DSLContext dslContext;
     private final RecordMapper<Record, LimitValue> recordMapper;
     @Value("${service.operation-lock-timeout-seconds:4}")
@@ -35,10 +34,13 @@ public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
     public void lockOperation(String operationId) {
+        // Keep the timeout local to this transaction, including implicit locks during inserts.
+        dslContext.select(field("set_config('lock_timeout', {0}, true)",
+                        String.class, val(operationLockTimeoutSeconds + "s")))
+                .fetch();
         // A transaction lock also protects operations whose first history row does not exist yet.
-        dslContext.select(field("pg_advisory_xact_lock({0}, hashtext({1}))",
-                        Object.class, val(OPERATION_LOCK_NAMESPACE), val(operationId)))
-                .queryTimeout(operationLockTimeoutSeconds)
+        dslContext.select(field("pg_advisory_xact_lock({0})",
+                        Object.class, val(OperationLockKey.fromOperationId(operationId))))
                 .fetch();
     }
 

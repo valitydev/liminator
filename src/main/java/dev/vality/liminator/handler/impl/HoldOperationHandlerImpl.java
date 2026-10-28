@@ -1,5 +1,6 @@
 package dev.vality.liminator.handler.impl;
 
+import dev.vality.liminator.DuplicateOperation;
 import dev.vality.liminator.LimitRequest;
 import dev.vality.liminator.OperationAlreadyInFinalState;
 import dev.vality.liminator.domain.enums.OperationState;
@@ -7,6 +8,7 @@ import dev.vality.liminator.domain.tables.pojos.OperationStateHistory;
 import dev.vality.liminator.handler.HoldOperationHandler;
 import dev.vality.liminator.service.LimitDataService;
 import dev.vality.liminator.service.LimitOperationsHistoryService;
+import dev.vality.liminator.util.LimitRequestUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.thrift.TException;
@@ -32,6 +34,9 @@ public class HoldOperationHandlerImpl implements HoldOperationHandler {
     @Transactional
     @Override
     public void handle(LimitRequest request) throws TException {
+        if (LimitRequestUtils.hasDuplicateLimitNames(request)) {
+            throw new DuplicateOperation();
+        }
         String operationId = request.getOperationId();
         limitOperationsHistoryService.lockOperation(operationId);
         Map<String, Long> limitNamesMap = limitDataService.getLimitDataMap(request.getLimitChanges());
@@ -48,7 +53,8 @@ public class HoldOperationHandlerImpl implements HoldOperationHandler {
         }
         limitDataService.createMissingLimitData(request.getLimitChanges(), limitNamesMap);
         log.info("Save operation: {} with limits: {}", operationId, Arrays.toString(limitNamesMap.keySet().toArray()));
-        int[] counts = limitOperationsHistoryService.writeOperations(request, OperationState.HOLD, limitNamesMap);
+        int[] counts = limitOperationsHistoryService.writeOperations(
+                operationId, request.getLimitChanges(), OperationState.HOLD, limitNamesMap);
         log.info("Success saved operation: {} with {} limits", operationId, counts.length);
     }
 
