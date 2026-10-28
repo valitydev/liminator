@@ -34,14 +34,15 @@ public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
     public void lockOperation(String operationId) {
-        // Keep the timeout local to this transaction, including implicit locks during inserts.
-        dslContext.select(field("set_config('lock_timeout', {0}, true)",
-                        String.class, val(operationLockTimeoutSeconds + "s")))
-                .fetch();
-        // A transaction lock also protects operations whose first history row does not exist yet.
-        dslContext.select(field("pg_advisory_xact_lock({0})",
-                        Object.class, val(OperationLockKey.fromOperationId(operationId))))
-                .fetch();
+        dslContext.fetch("""
+                with lock_settings as materialized (
+                    select set_config('lock_timeout', ?, true)
+                )
+                select pg_advisory_xact_lock(?)
+                from lock_settings
+                """,
+                operationLockTimeoutSeconds + "s",
+                OperationLockKey.fromOperationId(operationId));
     }
 
     @Override
