@@ -43,7 +43,7 @@ public class FinalizeOperationHandlerImpl implements FinalizeOperationHandler {
         Map<String, Long> limitNamesMap = getLimitDataMap(request, state.getLiteral());
         var finalOperations =
                 limitOperationsHistoryService.getExistedFinalOperations(operationId, limitNamesMap.values());
-        var finalOperationsByLimitId = checkFinalOperations(state, operationId, finalOperations);
+        var finalOperationsByLimitId = checkAndGetFinalOperations(state, operationId, finalOperations);
         var pending = preparePendingFinalization(request, state, limitNamesMap, finalOperationsByLimitId);
         finalizePendingChanges(operationId, state, pending);
     }
@@ -64,6 +64,21 @@ public class FinalizeOperationHandlerImpl implements FinalizeOperationHandler {
             limitNamesMap.put(limitData.getName(), limitData.getId());
         }
         return limitNamesMap;
+    }
+
+    private Map<Long, OperationStateHistory> checkAndGetFinalOperations(
+            OperationState state, String operationId, List<OperationStateHistory> finalOperations)
+            throws OperationNotFound {
+        Map<Long, OperationStateHistory> finalOperationsByLimitId = new HashMap<>();
+        for (OperationStateHistory operation : finalOperations) {
+            if (operation.getState() != state
+                    || finalOperationsByLimitId.putIfAbsent(operation.getLimitDataId(), operation) != null) {
+                log.error("[{}] Conflicting final history for operation {}: {}",
+                        state.getLiteral(), operationId, finalOperations);
+                throw new OperationNotFound();
+            }
+        }
+        return finalOperationsByLimitId;
     }
 
     private PendingFinalization preparePendingFinalization(
@@ -99,21 +114,6 @@ public class FinalizeOperationHandlerImpl implements FinalizeOperationHandler {
         int[] counts = limitOperationsHistoryService.writeOperations(
                 operationId, pending.changes(), state, pending.limitNamesMap());
         checkUpdatedOperationsConsistency(operationId, state, pending.changes().size(), counts.length);
-    }
-
-    private Map<Long, OperationStateHistory> checkFinalOperations(
-            OperationState state, String operationId, List<OperationStateHistory> finalOperations)
-            throws OperationNotFound {
-        Map<Long, OperationStateHistory> finalOperationsByLimitId = new HashMap<>();
-        for (OperationStateHistory operation : finalOperations) {
-            if (operation.getState() != state
-                    || finalOperationsByLimitId.putIfAbsent(operation.getLimitDataId(), operation) != null) {
-                log.error("[{}] Conflicting final history for operation {}: {}",
-                        state.getLiteral(), operationId, finalOperations);
-                throw new OperationNotFound();
-            }
-        }
-        return finalOperationsByLimitId;
     }
 
     private void checkUpdatedOperationsConsistency(String operationId,
