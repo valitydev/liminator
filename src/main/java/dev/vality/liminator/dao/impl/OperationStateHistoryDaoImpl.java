@@ -5,11 +5,15 @@ import dev.vality.liminator.domain.enums.OperationState;
 import dev.vality.liminator.domain.tables.pojos.OperationStateHistory;
 import dev.vality.liminator.model.CurrentLimitValue;
 import dev.vality.liminator.model.LimitValue;
+import dev.vality.liminator.util.OperationLockKey;
 import lombok.RequiredArgsConstructor;
 import org.jooq.*;
 import org.jooq.Record;
 import org.jooq.impl.DSL;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.List;
@@ -24,6 +28,22 @@ public class OperationStateHistoryDaoImpl implements OperationStateHistoryDao {
 
     private final DSLContext dslContext;
     private final RecordMapper<Record, LimitValue> recordMapper;
+    @Value("${service.operation-lock-timeout-seconds:4}")
+    private int operationLockTimeoutSeconds;
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void lockOperation(String operationId) {
+        dslContext.fetch("""
+                with lock_settings as materialized (
+                    select set_config('lock_timeout', ?, true)
+                )
+                select pg_advisory_xact_lock(?)
+                from lock_settings
+                """,
+                operationLockTimeoutSeconds + "s",
+                OperationLockKey.fromOperationId(operationId));
+    }
 
     @Override
     public Long save(OperationStateHistory history) {

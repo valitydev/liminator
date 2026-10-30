@@ -10,6 +10,8 @@ import java.util.List;
 
 public interface OperationStateHistoryDao extends CommonDao<OperationStateHistory> {
 
+    void lockOperation(String operationId);
+
     int[] saveBatch(List<OperationStateHistory> historyList);
 
     List<LimitValue> getLimitHistory(List<String> limitNames);
